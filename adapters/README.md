@@ -10,7 +10,7 @@ application that emits records directly uses the core alone: the null adapter.
 | Adapter | Directory | PyPI | Status |
 | --- | --- | --- | --- |
 | Core (null adapter) | [`core/`](core/) | `audr` | Pre-release `0.1.0a1` |
-| NVIDIA NeMo Relay | [`nemo-relay/`](nemo-relay/) | `audr-adapter-nemo-relay` | Experimental |
+| NVIDIA NeMo Relay | [`nemo-relay/`](nemo-relay/) | `audr-adapter-nemo-relay` | Pre-release `0.1.0a1` |
 
 See [`sinks/`](../sinks/) for where records go once an adapter emits them, and
 [CONTRIBUTING.md](../CONTRIBUTING.md) for how to propose a new adapter.

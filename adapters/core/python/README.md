@@ -11,8 +11,8 @@ async pipeline.
 pip install audr
 ```
 
-The current distribution is the pre-release `0.1.0a1`, published for integration
-testing. `pip install audr` resolves to it until a final release is published.
+`0.1.0a1` is an alpha release. `pip install audr` resolves to it until a final
+release is published.
 
 ## Quickstart
 
