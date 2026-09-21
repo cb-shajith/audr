@@ -1,6 +1,6 @@
 """Parse a JSON-encoded AUDR record, handling validation errors.
 
-The read path: `AgentUsageRecord.from_json` raises `ValidationError` carrying every
+The read path: `AUDR.from_json` raises `ValidationError` carrying every
 issue found, rather than failing on the first one. This payload is deliberately
 missing `resource.provider` to exercise that path.
 """
@@ -33,7 +33,7 @@ BROKEN_PAYLOAD = json.dumps(
 
 def main() -> None:
     try:
-        record = audr.AgentUsageRecord.from_json(BROKEN_PAYLOAD)
+        record = audr.AUDR.from_json(BROKEN_PAYLOAD)
     except audr.ValidationError as err:
         for issue in err.issues:
             print(f"bad AUDR record: code={issue.code} path={issue.path}")

@@ -11,7 +11,7 @@ from typing import Any
 
 from audr._pipeline import Pipeline
 from audr.errors import ConfigurationError, LifecycleError, ValidationError
-from audr.record import AgentUsageRecord, Emitter
+from audr.record import AUDR, Emitter
 from audr.results import (
     DeliveredCallback,
     DeliveryStats,
@@ -97,7 +97,7 @@ class Client:
         """Start the delivery worker. Idempotent; also done lazily by `record()`."""
         self._ensure_started()
 
-    def record(self, record: AgentUsageRecord | Mapping[str, Any]) -> SubmitResult:
+    def record(self, record: AUDR | Mapping[str, Any]) -> SubmitResult:
         """Queue one record and return immediately; the worker performs all I/O.
 
         Delivery problems are reported through the returned :class:`SubmitResult`,
@@ -106,7 +106,7 @@ class Client:
         loop on the current thread raises :class:`LifecycleError`, because the
         record could never be delivered.
 
-        A mapping that fails to parse into an :class:`~audr.record.AgentUsageRecord`
+        A mapping that fails to parse into an :class:`~audr.record.AUDR`
         has no record object to hand the failure callback, so `on_failure` is only
         called when a record instance exists.
         """
@@ -115,11 +115,11 @@ class Client:
 
         self._ensure_started()
 
-        if isinstance(record, AgentUsageRecord):
+        if isinstance(record, AUDR):
             model = record
         else:
             try:
-                model = AgentUsageRecord.from_dict(record)
+                model = AUDR.from_dict(record)
             except ValidationError as error:
                 _LOGGER.warning("record rejected: invalid mapping")
                 return SubmitResult(SubmitOutcome.REJECTED_INVALID, issues=error.issues)
@@ -136,7 +136,7 @@ class Client:
 
         return self._pipeline.submit(model)
 
-    def _notify_failure(self, record: AgentUsageRecord) -> None:
+    def _notify_failure(self, record: AUDR) -> None:
         if self._on_failure is None:
             return
         failure = FailedRecord(

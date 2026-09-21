@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from audr.record import (
-    AgentUsageRecord,
+    AUDR,
     Attribution,
     Emitter,
     LlmUsage,
@@ -18,7 +18,7 @@ from audr.record import (
 EMITTER = Emitter(component="harness", name="h", version="1")
 
 
-def minimal(**overrides: Any) -> AgentUsageRecord:
+def minimal(**overrides: Any) -> AUDR:
     """The smallest record the model accepts, with `overrides` applied."""
     base: dict[str, Any] = {
         "timing": Timing(duration_ms=10),
@@ -34,4 +34,4 @@ def minimal(**overrides: Any) -> AgentUsageRecord:
         "attribution": Attribution(environment="test"),
     }
     base.update(overrides)
-    return AgentUsageRecord(**base)
+    return AUDR(**base)

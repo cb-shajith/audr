@@ -4,7 +4,7 @@ from collections.abc import Sequence
 import pytest
 
 from audr import Client, ConfigurationError, Emitter, FailedRecord, LifecycleError, SubmitOutcome
-from audr.record import AgentUsageRecord
+from audr.record import AUDR
 from audr.record.codes import ErrorCode
 from audr.testing import MemorySink, make_record
 
@@ -82,7 +82,7 @@ async def test_record_after_shutdown() -> None:
 
 
 async def test_on_delivered_fires_per_accepted_batch() -> None:
-    delivered: list[Sequence[AgentUsageRecord]] = []
+    delivered: list[Sequence[AUDR]] = []
     async with Client(MemorySink(), batch_max_size=2, on_delivered=delivered.append) as c:
         for _ in range(4):
             assert c.record(make_record()).queued

@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from audr.errors import ValidationIssue
-from audr.record import AgentUsageRecord
+from audr.record import AUDR
 
 
 class SubmitOutcome(StrEnum):
@@ -57,7 +57,7 @@ class Disposition(StrEnum):
 class FailedRecord:
     """One terminal delivery failure passed to the configured failure callback."""
 
-    record: AgentUsageRecord
+    record: AUDR
     disposition: Disposition
     reason: FailureReason
     retryable: bool
@@ -66,7 +66,7 @@ class FailedRecord:
 
 FailureCallback = Callable[[FailedRecord], None]
 
-DeliveredCallback = Callable[[Sequence[AgentUsageRecord]], None]
+DeliveredCallback = Callable[[Sequence[AUDR]], None]
 
 
 @dataclass(frozen=True, slots=True)

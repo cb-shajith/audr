@@ -38,7 +38,7 @@ implementation; the outcomes and guarantees are the same in every language.
 
 ```python
 class Sink(Protocol):
-    async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult: ...
+    async def deliver(self, batch: Sequence[AUDR]) -> BatchResult: ...
     async def close(self) -> None: ...        # idempotent; never raises
 ```
 

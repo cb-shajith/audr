@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from audr._pipeline import Pipeline
-from audr.record import AgentUsageRecord
+from audr.record import AUDR
 from audr.results import Disposition, FailedRecord, FailureReason
 from audr.sinks import BatchOutcome, BatchResult, RejectedRecord
 from audr.testing import MemorySink, make_record
@@ -16,7 +16,7 @@ async def test_notify_failure_carries_record_and_detail() -> None:
     failed: list[FailedRecord] = []
 
     class S(MemorySink):
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             return BatchResult.accepted(
                 rejected=[RejectedRecord(batch[0].record_id, "not allowed")]
             )

@@ -22,7 +22,7 @@ from audr.record.codes import PYDANTIC_TYPE_TO_CODE, ErrorCode
 if TYPE_CHECKING:  # pragma: no cover - import cycle broken for runtime
     import pydantic
 
-    from audr.record.models import AgentUsageRecord, Attribution
+    from audr.record.models import AUDR, Attribution
 
 _SUPPORTED_SPEC_VERSION = re.compile(r"^1\.0\.\d+$")
 _ULID = re.compile(r"^[0-7][0-9A-HJKMNP-TV-Z]{25}$")
@@ -66,9 +66,7 @@ def version_issues(data: Mapping[str, Any]) -> list[ValidationIssue]:
     return []
 
 
-def cross_field_issues(
-    record: AgentUsageRecord, *, now: datetime | None = None
-) -> list[ValidationIssue]:
+def cross_field_issues(record: AUDR, *, now: datetime | None = None) -> list[ValidationIssue]:
     """Every hand-written rule that holds for `record`, in document order."""
     moment = now_utc() if now is None else now
     if moment.tzinfo is None:
@@ -99,7 +97,7 @@ def attribution_issues(attribution: Attribution) -> list[ValidationIssue]:
     return issues
 
 
-def _envelope_issues(record: AgentUsageRecord) -> Iterator[ValidationIssue]:
+def _envelope_issues(record: AUDR) -> Iterator[ValidationIssue]:
     if not _SUPPORTED_SPEC_VERSION.match(record.spec_version):
         yield ValidationIssue(ErrorCode.UNSUPPORTED_VERSION, "/spec_version")
     if not _is_record_identifier(record.record_id):
@@ -108,14 +106,14 @@ def _envelope_issues(record: AgentUsageRecord) -> Iterator[ValidationIssue]:
         yield ValidationIssue(ErrorCode.INVALID_IDENTIFIER, "/corrects")
 
 
-def _emitter_issues(record: AgentUsageRecord) -> Iterator[ValidationIssue]:
+def _emitter_issues(record: AUDR) -> Iterator[ValidationIssue]:
     # The model leaves `emitter` unset so a client can stamp it on delivery; by the time a
     # record is validated it must be there.
     if record.emitter is None:
         yield ValidationIssue(ErrorCode.REQUIRED, "/emitter")
 
 
-def _timing_issues(record: AgentUsageRecord, now: datetime) -> Iterator[ValidationIssue]:
+def _timing_issues(record: AUDR, now: datetime) -> Iterator[ValidationIssue]:
     timing = record.timing
     if timing.event_time.microsecond % 1000:
         yield ValidationIssue(ErrorCode.MILLISECOND_PRECISION, "/timing/event_time")
@@ -125,7 +123,7 @@ def _timing_issues(record: AgentUsageRecord, now: datetime) -> Iterator[Validati
         yield ValidationIssue(ErrorCode.FORBIDDEN, "/timing/received_time")
 
 
-def _shape_issues(record: AgentUsageRecord) -> Iterator[ValidationIssue]:
+def _shape_issues(record: AUDR) -> Iterator[ValidationIssue]:
     usage = record.usage
     if (usage.llm is None) == (usage.tool is None):
         yield ValidationIssue(ErrorCode.INVALID_STRUCTURE, "/usage")
@@ -153,7 +151,7 @@ def _shape_issues(record: AgentUsageRecord) -> Iterator[ValidationIssue]:
             yield ValidationIssue(ErrorCode.FORBIDDEN, "/cost/llm")
 
 
-def _run_issues(record: AgentUsageRecord) -> Iterator[ValidationIssue]:
+def _run_issues(record: AUDR) -> Iterator[ValidationIssue]:
     trace_id = record.run.trace_id
     if trace_id is not None and not _TRACE_ID.match(trace_id):
         yield ValidationIssue(ErrorCode.INVALID_IDENTIFIER, "/run/trace_id")

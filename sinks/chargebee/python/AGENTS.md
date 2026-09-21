@@ -7,7 +7,7 @@ the contribution process are in the top-level [`CONTRIBUTING.md`](../../../CONTR
 ## What this is
 
 `sinks/chargebee/python` is the `audr-sink-chargebee` distribution: an HTTP sink that
-delivers `audr.AgentUsageRecord` batches to a Chargebee site's usage-ingest batch endpoint
+delivers `audr.AUDR` record batches to a Chargebee site's usage-ingest batch endpoint
 for Usage-Based Billing. It implements the sink contract defined in
 [`adapters/core/README.md`](../../../adapters/core/README.md#the-sink-contract).
 

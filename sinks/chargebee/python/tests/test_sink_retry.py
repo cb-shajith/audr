@@ -3,13 +3,13 @@ from typing import Any
 
 import httpx
 import pytest
-from audr import AgentUsageRecord, Attribution, BatchOutcome
+from audr import AUDR, Attribution, BatchOutcome
 from audr.testing import make_record
 
 from audr_sink_chargebee import ChargebeeSink, RetryPolicy
 
 
-def _record() -> AgentUsageRecord:
+def _record() -> AUDR:
     return make_record(attribution=Attribution(environment="test", subscription_id="sub_123"))
 
 

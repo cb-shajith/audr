@@ -10,8 +10,8 @@ from audr.errors import (
     ValidationIssue,
 )
 from audr.record import (
+    AUDR,
     SPEC_VERSION,
-    AgentUsageRecord,
     Attribution,
     Cost,
     Emitter,
@@ -45,8 +45,8 @@ from audr.results import (
 from audr.sinks import BatchOutcome, BatchResult, FileFormat, FileSink, RejectedRecord, Sink
 
 __all__ = [
+    "AUDR",
     "SPEC_VERSION",
-    "AgentUsageRecord",
     "Attribution",
     "AudrError",
     "BatchOutcome",

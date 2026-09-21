@@ -18,7 +18,7 @@ linked from [`README.md`](README.md).
 ## What an adapter does
 
 - **Observes one runtime** through that runtime's own extension mechanism — a plugin, a
-  callback, a middleware — and builds one `AgentUsageRecord` per metered operation.
+  callback, a middleware — and builds one `AUDR` record per metered operation.
 - **Hands every record to `client.record()`** on a `Client` the host application owns. The
   host constructs the client and its sink and controls startup and shutdown; the adapter
   never creates a sink and never talks to a destination.

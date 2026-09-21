@@ -2,7 +2,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/audr-sink-chargebee?include_prereleases)](https://pypi.org/project/audr-sink-chargebee/)
 
-The Chargebee sink for [AUDR](https://openaudr.dev). Delivers `audr.AgentUsageRecord`
+The Chargebee sink for [AUDR](https://openaudr.dev). Delivers `audr.AUDR` record
 batches to a site's usage-ingest batch endpoint.
 
 ```bash
@@ -17,7 +17,7 @@ from audr_sink_chargebee import ChargebeeSink
 # A full record; construction is documented in the core SDK README:
 # https://github.com/openaudr/audr/blob/main/adapters/core/python/README.md
 # Chargebee additionally requires attribution.subscription_id.
-record = audr.AgentUsageRecord(...)
+record = audr.AUDR(...)
 
 
 async def main() -> None:

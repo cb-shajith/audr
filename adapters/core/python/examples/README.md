@@ -10,7 +10,7 @@ uv run python examples/custom_sink.py
 
 - `write_to_file.py` builds one AUDR record and delivers it through `Client` and
   `FileSink` to a local JSON Lines file.
-- `from_json.py` parses a JSON payload with `AgentUsageRecord.from_json`, handling the
+- `from_json.py` parses a JSON payload with `AUDR.from_json`, handling the
   `ValidationError` raised by a deliberately broken (missing `resource.provider`) record.
 - `custom_sink.py` implements a minimal `PrintSink` and checks it against
   `audr.testing.assert_sink_contract`.

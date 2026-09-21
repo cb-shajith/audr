@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 from typing import cast
 
 import pytest
-from audr import AgentUsageRecord, Client, SubmitOutcome, SubmitResult
+from audr import AUDR, Client, SubmitOutcome, SubmitResult
 
 from audr_adapter_nemo_relay import (
     NeMoRelayActivationError,
@@ -50,10 +50,10 @@ class _Client:
     ) -> None:
         self.outcome = outcome
         self.error_message = error_message
-        self.records: list[AgentUsageRecord] = []
+        self.records: list[AUDR] = []
         self.thread_ids: list[int] = []
 
-    def record(self, record: AgentUsageRecord) -> SubmitResult:
+    def record(self, record: AUDR) -> SubmitResult:
         self.records.append(record)
         self.thread_ids.append(threading.get_ident())
         if self.error_message is not None:
@@ -152,7 +152,7 @@ async def test_worker_thread_handoff_submits_one_audr_record() -> None:
     await plugin.drain()
 
     assert len(client.records) == 1
-    assert isinstance(client.records[0], AgentUsageRecord)
+    assert isinstance(client.records[0], AUDR)
     assert client.thread_ids == [loop_thread]
 
 
@@ -277,7 +277,7 @@ async def test_unexpected_encoder_failure_is_logged_as_internal(
     callback = context.callback
     assert callback is not None
 
-    def fail_encoding(*_: object, **__: object) -> AgentUsageRecord:
+    def fail_encoding(*_: object, **__: object) -> AUDR:
         raise RuntimeError("internal encoder bug")
 
     monkeypatch.setattr(_plugin, "encode_audr", fail_encoding)

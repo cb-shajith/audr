@@ -7,7 +7,7 @@ from collections.abc import Callable
 from enum import StrEnum
 from threading import Lock
 
-from audr import AgentUsageRecord, Client, SubmitOutcome
+from audr import AUDR, Client, SubmitOutcome
 
 
 class HandoffOutcome(StrEnum):
@@ -43,7 +43,7 @@ class EventLoopBridge:
         self._pending = 0
         self._drained: asyncio.Future[None] | None = None
 
-    def submit(self, record: AgentUsageRecord, event_id: str) -> HandoffOutcome:
+    def submit(self, record: AUDR, event_id: str) -> HandoffOutcome:
         """Schedule one record for the client's loop and return immediately."""
         with self._lock:
             if self._pending >= self._max_pending:
@@ -76,7 +76,7 @@ class EventLoopBridge:
         except TimeoutError:
             raise TimeoutError("NeMo Relay integration drain timed out") from None
 
-    def _submit_to_client(self, record: AgentUsageRecord, event_id: str) -> None:
+    def _submit_to_client(self, record: AUDR, event_id: str) -> None:
         try:
             result = self._client.record(record)
         except Exception:

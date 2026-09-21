@@ -8,7 +8,7 @@ import jsonschema
 import pytest
 
 from audr.errors import ValidationError
-from audr.record import AgentUsageRecord
+from audr.record import AUDR
 
 ROOT = Path(__file__).resolve().parents[4]
 CASES: list[dict[str, Any]] = json.loads((ROOT / "conformance/cases.json").read_text())["cases"]
@@ -28,7 +28,7 @@ def load(case: dict[str, Any]) -> dict[str, Any]:
 
 def sdk_accepts(data: dict[str, Any]) -> bool:
     try:
-        AgentUsageRecord.from_dict(data)
+        AUDR.from_dict(data)
     except ValidationError:
         return False
     return True
@@ -49,5 +49,5 @@ def test_agrees_with_manifest(case: dict[str, Any]) -> None:
 )
 def test_valid_records_round_trip_and_stay_schema_valid(case: dict[str, Any]) -> None:
     data = load(case)
-    out = AgentUsageRecord.from_dict(data).to_dict()
+    out = AUDR.from_dict(data).to_dict()
     VALIDATOR.validate(out)

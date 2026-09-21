@@ -4,14 +4,14 @@ import asyncio
 from collections.abc import Sequence
 
 from audr._pipeline import Pipeline
-from audr.record import AgentUsageRecord
+from audr.record import AUDR
 from audr.results import FailedRecord, FailureReason
 from audr.sinks import BatchResult
 from audr.testing import MemorySink, make_record
 
 
 class SlowSink(MemorySink):
-    async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+    async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
         await asyncio.sleep(0.5)
         return await super().deliver(batch)
 

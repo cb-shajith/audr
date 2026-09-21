@@ -8,7 +8,7 @@ import pytest
 from pydantic import BaseModel
 
 import audr.record as record_module
-from audr.record import SPEC_VERSION, AgentUsageRecord, LlmUsage, Timing
+from audr.record import AUDR, SPEC_VERSION, LlmUsage, Timing
 from audr.record import _schema as gen
 from tests.helpers import EMITTER, minimal
 
@@ -44,7 +44,7 @@ def test_event_time_ms() -> None:
 
 
 def test_from_dict_builds_the_subclassed_blocks() -> None:
-    parsed = AgentUsageRecord.from_dict(minimal(emitter=EMITTER).to_dict())
+    parsed = AUDR.from_dict(minimal(emitter=EMITTER).to_dict())
     assert type(parsed.timing) is Timing
     assert type(parsed.attribution) is record_module.Attribution
 

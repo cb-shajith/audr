@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol, runtime_checkable
 
-from audr.record import AgentUsageRecord
+from audr.record import AUDR
 
 
 class BatchOutcome(StrEnum):
@@ -68,7 +68,7 @@ class BatchResult:
 class Sink(Protocol):
     """A destination able to deliver batches of AUDR records."""
 
-    async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+    async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
         """Deliver one record batch and return its typed outcome."""
         ...
 

@@ -69,7 +69,7 @@ def prepare(schema: dict[str, Any]) -> dict[str, Any]:
             node.pop("patternProperties", None)
 
     _walk(schema, "", fn)
-    schema["title"] = "AgentUsageRecord"
+    schema["title"] = "AUDR"
     return schema
 
 
@@ -95,7 +95,7 @@ def generate() -> str:
                 "--output-model-type",
                 "pydantic_v2.BaseModel",
                 "--class-name",
-                "AgentUsageRecord",
+                "AUDR",
                 "--use-title-as-name",
                 "--base-class",
                 BASE,

@@ -4,7 +4,7 @@ import pytest
 
 from audr.errors import ValidationError, ValidationIssue
 from audr.record import (
-    AgentUsageRecord,
+    AUDR,
     Attribution,
     Cost,
     LlmCost,
@@ -18,7 +18,7 @@ from audr.record.codes import ErrorCode
 from tests.helpers import EMITTER, minimal
 
 
-def codes(record: AgentUsageRecord, *, now: datetime | None = None) -> list[tuple[ErrorCode, str]]:
+def codes(record: AUDR, *, now: datetime | None = None) -> list[tuple[ErrorCode, str]]:
     return [(i.code, i.path) for i in record.validate(now=now)]
 
 

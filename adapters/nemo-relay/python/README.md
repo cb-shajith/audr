@@ -190,7 +190,7 @@ with `resource.operation="generation"` and `resource.modality="text"`.
 
 ## Record shape
 
-Every completed operation becomes one `AgentUsageRecord`, with `record_id` minted fresh by
+Every completed operation becomes one `AUDR` record, with `record_id` minted fresh by
 the SDK (Relay's scope UUIDs are not UUIDv7, the identifier shape AUDR's `record_id`
 requires). The Relay scope UUID that ties related records together is carried on
 `run.span_id` instead, and the Relay root scope UUID is `run.run_id`. The client applies

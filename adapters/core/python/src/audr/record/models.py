@@ -7,7 +7,7 @@ supply, the parse/serialize boundary, and the prose rules a JSON Schema cannot s
 
 Three generated classes are subclassed. ``Timing`` gains a default ``event_time`` so a caller
 can time an operation by building the record at the end of it. ``Attribution`` gains its
-billability rules. ``AgentUsageRecord`` gains SDK-owned defaults, and re-declares ``timing``
+billability rules. ``AUDR`` gains SDK-owned defaults, and re-declares ``timing``
 and ``attribution`` with the subclass types so parsing builds the richer classes. Every other
 block is re-exported exactly as generated.
 """
@@ -70,7 +70,7 @@ class Attribution(_schema.Attribution):
         return _validate.attribution_issues(self)
 
 
-class AgentUsageRecord(_schema.AgentUsageRecord):
+class AUDR(_schema.AUDR):
     """One metered operation in an agent system.
 
     The generated model requires `spec_version`, `record_id` and `emitter`; all three are
@@ -88,7 +88,7 @@ class AgentUsageRecord(_schema.AgentUsageRecord):
     attribution: Attribution
 
     @classmethod
-    def from_dict(cls, data: Mapping[str, Any]) -> AgentUsageRecord:
+    def from_dict(cls, data: Mapping[str, Any]) -> AUDR:
         """Parse an already-decoded record, raising :class:`ValidationError` on any issue."""
         version_issues = _validate.version_issues(data)
         if version_issues:
@@ -100,7 +100,7 @@ class AgentUsageRecord(_schema.AgentUsageRecord):
         return record.ensure_valid()
 
     @classmethod
-    def from_json(cls, text: str | bytes) -> AgentUsageRecord:
+    def from_json(cls, text: str | bytes) -> AUDR:
         """Parse a JSON record, raising :class:`ValidationError` on any issue."""
         try:
             data = json.loads(text)
@@ -117,7 +117,7 @@ class AgentUsageRecord(_schema.AgentUsageRecord):
         """
         return _validate.cross_field_issues(self, now=now)
 
-    def ensure_valid(self) -> AgentUsageRecord:
+    def ensure_valid(self) -> AUDR:
         """Return this record, or raise :class:`ValidationError` carrying every issue."""
         issues = self.validate()
         if issues:
@@ -132,7 +132,7 @@ class AgentUsageRecord(_schema.AgentUsageRecord):
         """The record as JSON with sorted keys; compact unless `indent` is given."""
         return _encode.to_json(self.to_dict(), indent=indent)
 
-    def with_emitter(self, emitter: Emitter) -> AgentUsageRecord:
+    def with_emitter(self, emitter: Emitter) -> AUDR:
         """A copy stamped with `emitter`, for a client that identifies itself on delivery."""
         return self.model_copy(update={"emitter": emitter})
 
@@ -144,8 +144,8 @@ class AgentUsageRecord(_schema.AgentUsageRecord):
 
 
 __all__ = [
+    "AUDR",
     "SPEC_VERSION",
-    "AgentUsageRecord",
     "Attribution",
     "Cost",
     "Emitter",

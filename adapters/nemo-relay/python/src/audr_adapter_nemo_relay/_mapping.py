@@ -17,8 +17,8 @@ from typing import TypeAlias, assert_never
 from uuid import UUID
 
 from audr import (
+    AUDR,
     SPEC_VERSION,
-    AgentUsageRecord,
     Attribution,
     Emitter,
     LlmUsage,
@@ -364,7 +364,7 @@ def _normalize_tool(event: Mapping[str, object], shared: _SharedFields) -> ToolO
     )
 
 
-def encode_audr(operation: Operation, *, relay_version: str) -> AgentUsageRecord:
+def encode_audr(operation: Operation, *, relay_version: str) -> AUDR:
     """Encode one normalized operation as typed AUDR."""
     match operation:
         case LlmOperation():
@@ -399,7 +399,7 @@ def encode_audr(operation: Operation, *, relay_version: str) -> AgentUsageRecord
         case unreachable:
             assert_never(unreachable)
 
-    return AgentUsageRecord(
+    return AUDR(
         spec_version=SPEC_VERSION,
         # Relay's scope UUIDs are not UUIDv7, so `record_id` is minted fresh here;
         # the scope identity that ties related records together lives in `run.span_id`.

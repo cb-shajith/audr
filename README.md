@@ -89,7 +89,7 @@ async def main() -> None:
         sink,
         emitter=audr.Emitter(component="harness", name="my-harness", version="1.4.0"),
     ) as client:
-        record = audr.AgentUsageRecord(...)   # full construction: adapters/core/python/README.md
+        record = audr.AUDR(...)   # full construction: adapters/core/python/README.md
         client.record(record)                 # an adapter makes this call on your behalf
 
 

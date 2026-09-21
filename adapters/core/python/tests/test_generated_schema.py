@@ -53,9 +53,9 @@ def test_every_schema_property_has_a_field(cls: type[BaseModel], section: str) -
 
 
 def test_root_fields_match_schema() -> None:
-    assert set(SCHEMA["properties"]) == set(gen.AgentUsageRecord.model_fields)
+    assert set(SCHEMA["properties"]) == set(gen.AUDR.model_fields)
     assert set(SCHEMA["required"]) == {
-        n for n, f in gen.AgentUsageRecord.model_fields.items() if f.is_required()
+        n for n, f in gen.AUDR.model_fields.items() if f.is_required()
     }
 
 
@@ -71,7 +71,7 @@ def test_extensible_blocks() -> None:
         gen.Usage,
         gen.LlmCost,
         gen.Cost,
-        gen.AgentUsageRecord,
+        gen.AUDR,
     ):
         assert issubclass(frozen, FrozenBase)
 
@@ -114,12 +114,12 @@ def test_generated_model_matches_fixture_expectations(path: Path) -> None:
         timing.pop("received_time", None)
 
     if path.parent.name == "valid":
-        gen.AgentUsageRecord.model_validate(payload)
+        gen.AUDR.model_validate(payload)
         return
 
     if path.name in CROSS_FIELD_ONLY:
         # Accepted here; rejected by the hand-written cross-field validation layer.
-        gen.AgentUsageRecord.model_validate(payload)
+        gen.AUDR.model_validate(payload)
     else:
         with pytest.raises(ValueError):
-            gen.AgentUsageRecord.model_validate(payload)
+            gen.AUDR.model_validate(payload)

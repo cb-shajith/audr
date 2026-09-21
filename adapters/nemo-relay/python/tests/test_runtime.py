@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 from audr import (
-    AgentUsageRecord,
+    AUDR,
     Attribution,
     Client,
     Emitter,
@@ -35,9 +35,9 @@ if TYPE_CHECKING:
     )
 
 
-def _manual_record() -> AgentUsageRecord:
+def _manual_record() -> AUDR:
     """A host-submitted record, to prove the client still accepts non-Relay traffic."""
-    return AgentUsageRecord(
+    return AUDR(
         emitter=Emitter(component="harness", name="example-app", version="1.0"),
         timing=Timing(),
         resource=Resource(

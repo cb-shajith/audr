@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Sequence
 
-from audr import AgentUsageRecord, BatchResult
+from audr import AUDR, BatchResult
 from audr.testing import assert_sink_contract
 
 
@@ -20,7 +20,7 @@ class PrintSink:
     def __init__(self) -> None:
         self._closed = False
 
-    async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+    async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
         if self._closed:
             return BatchResult.closed()
         for record in batch:

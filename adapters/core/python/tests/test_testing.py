@@ -12,7 +12,7 @@ from typing import cast
 
 import pytest
 
-from audr.record import AgentUsageRecord
+from audr.record import AUDR
 from audr.sinks import BatchOutcome, BatchResult, RejectedRecord, Sink
 from audr.testing import MemorySink, assert_sink_contract, make_record
 
@@ -23,9 +23,9 @@ class _Conforming:
     def __init__(self) -> None:
         self.closed = False
         self.close_calls = 0
-        self.delivered: list[Sequence[AgentUsageRecord]] = []
+        self.delivered: list[Sequence[AUDR]] = []
 
-    async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+    async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
         self.delivered.append(batch)
         if self.closed:
             return BatchResult.closed()
@@ -78,7 +78,7 @@ async def test_a_sink_that_keeps_working_after_close_is_allowed() -> None:
     """`deliver()` after `close()` may return ACCEPTED, not only CLOSED."""
 
     class _StillWorks(_Conforming):
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             return BatchResult.accepted()
 
     await assert_sink_contract(_StillWorks())
@@ -94,7 +94,7 @@ async def test_an_object_that_is_not_a_sink_is_rejected() -> None:
 
 async def test_a_deliver_that_does_not_return_a_batch_result_is_rejected() -> None:
     class _WrongType(_Conforming):
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             return cast(BatchResult, {"outcome": "accepted"})
 
     with pytest.raises(AssertionError, match=r"must return a BatchResult, got dict"):
@@ -103,7 +103,7 @@ async def test_a_deliver_that_does_not_return_a_batch_result_is_rejected() -> No
 
 async def test_an_unknown_id_absent_from_the_batch_is_rejected() -> None:
     class _ForeignUnknown(_Conforming):
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             return BatchResult.accepted(unknown=["never-in-batch"])
 
     with pytest.raises(AssertionError, match=r"absent from the batch.*never-in-batch"):
@@ -112,7 +112,7 @@ async def test_an_unknown_id_absent_from_the_batch_is_rejected() -> None:
 
 async def test_a_rejected_id_absent_from_the_batch_is_rejected() -> None:
     class _ForeignRejection(_Conforming):
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             return BatchResult.accepted(rejected=[RejectedRecord("never-in-batch", "nope")])
 
     with pytest.raises(AssertionError, match=r"absent from the batch.*never-in-batch"):
@@ -121,7 +121,7 @@ async def test_a_rejected_id_absent_from_the_batch_is_rejected() -> None:
 
 async def test_an_id_in_both_rejected_and_unknown_is_rejected() -> None:
     class _DoubleReported(_Conforming):
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             identifier = batch[0].record_id
             return BatchResult.accepted(
                 rejected=[RejectedRecord(identifier, "dup")],
@@ -156,7 +156,7 @@ async def test_a_close_that_raises_only_on_the_second_call_is_rejected() -> None
 
 async def test_a_sink_that_fails_instead_of_reporting_closed_is_rejected() -> None:
     class _FailsAfterClose(_Conforming):
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             if self.closed:
                 return BatchResult.failed(retryable=True)
             return BatchResult.accepted()

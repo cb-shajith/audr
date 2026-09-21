@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import httpx
-from audr import AgentUsageRecord, BatchResult, ConfigurationError, RejectedRecord
+from audr import AUDR, BatchResult, ConfigurationError, RejectedRecord
 
 from audr_sink_chargebee._credentials import resolve_credentials
 from audr_sink_chargebee._event import UsageEvent
@@ -83,7 +83,7 @@ class ChargebeeSink:
             transport=transport,
         )
 
-    async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+    async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
         """Deliver a batch in one request, returning failures as a typed outcome.
 
         The batch is sent whole. Chargebee owns the request-size limit, so a
@@ -271,7 +271,7 @@ class ChargebeeSink:
         return _SendOutcome(ok=True, rejected=tuple(rejected), unknown=unknown)
 
 
-def _build_event(record: AgentUsageRecord, subscription_id: str, separator: str) -> UsageEvent:
+def _build_event(record: AUDR, subscription_id: str, separator: str) -> UsageEvent:
     return UsageEvent(
         subscription_id=subscription_id,
         usage_timestamp=record.event_time_ms,

@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from audr._pipeline import Pipeline
-from audr.record import AgentUsageRecord
+from audr.record import AUDR
 from audr.results import DeliveredCallback, DeliveryStats, Disposition, FailedRecord, FailureReason
 from audr.sinks import BatchOutcome, BatchResult, RejectedRecord
 from audr.testing import MemorySink, make_record
@@ -11,7 +11,7 @@ from audr.testing import MemorySink, make_record
 
 async def run(
     sink: MemorySink, n: int = 2, *, on_delivered: DeliveredCallback | None = None
-) -> tuple[DeliveryStats, list[FailedRecord], list[AgentUsageRecord]]:
+) -> tuple[DeliveryStats, list[FailedRecord], list[AUDR]]:
     failed: list[FailedRecord] = []
     p = Pipeline(
         sink,
@@ -33,7 +33,7 @@ async def run(
 
 async def test_rejected_and_unknown_buckets() -> None:
     class S(MemorySink):
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             return BatchResult.accepted(
                 rejected=[RejectedRecord(batch[0].record_id, "dup")],
                 unknown=[batch[1].record_id],
@@ -68,7 +68,7 @@ async def test_raising_sink_marks_unknown_and_worker_survives() -> None:
     class Boom(MemorySink):
         calls = 0
 
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             Boom.calls += 1
             if Boom.calls == 1:
                 raise RuntimeError("x")
@@ -113,7 +113,7 @@ async def test_callback_exception_is_swallowed() -> None:
 
 
 async def test_delivered_callback_receives_accepted_records_once() -> None:
-    delivered: list[Sequence[AgentUsageRecord]] = []
+    delivered: list[Sequence[AUDR]] = []
     stats, _, records = await run(MemorySink(), n=3, on_delivered=delivered.append)
     assert stats.sent == 3
     assert len(delivered) == 1
@@ -122,13 +122,13 @@ async def test_delivered_callback_receives_accepted_records_once() -> None:
 
 async def test_delivered_excludes_rejected_and_unknown() -> None:
     class S(MemorySink):
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             return BatchResult.accepted(
                 rejected=[RejectedRecord(batch[0].record_id, "dup")],
                 unknown=[batch[1].record_id],
             )
 
-    delivered: list[Sequence[AgentUsageRecord]] = []
+    delivered: list[Sequence[AUDR]] = []
     stats, failed, records = await run(S(), n=3, on_delivered=delivered.append)
     assert stats.sent == 1
     assert len(delivered) == 1
@@ -137,13 +137,13 @@ async def test_delivered_excludes_rejected_and_unknown() -> None:
 
 
 async def test_delivered_not_called_on_retryable_failure() -> None:
-    delivered: list[Sequence[AgentUsageRecord]] = []
+    delivered: list[Sequence[AUDR]] = []
     await run(MemorySink(fail_with=BatchOutcome.RETRYABLE_FAILURE), on_delivered=delivered.append)
     assert delivered == []
 
 
 async def test_delivered_callback_exception_is_swallowed_and_worker_continues() -> None:
-    def bad(_: Sequence[AgentUsageRecord]) -> None:
+    def bad(_: Sequence[AUDR]) -> None:
         raise ValueError("cb")
 
     p = Pipeline(

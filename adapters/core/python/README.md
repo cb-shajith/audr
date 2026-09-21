@@ -20,7 +20,7 @@ pip install audr
 import asyncio
 import audr
 
-record = audr.AgentUsageRecord(
+record = audr.AUDR(
     timing=audr.Timing(duration_ms=812),  # event_time defaults to now
     resource=audr.Resource(
         provider="anthropic",
@@ -64,7 +64,7 @@ Records arriving as JSON are parsed and validated by `from_json()`:
 
 ```python
 try:
-    record = audr.AgentUsageRecord.from_json(payload)
+    record = audr.AUDR.from_json(payload)
 except audr.ValidationError as err:
     for issue in err.issues:
         log.warning("bad AUDR record", code=issue.code, path=issue.path)

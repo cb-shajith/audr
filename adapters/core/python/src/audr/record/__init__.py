@@ -6,8 +6,8 @@ here; the generated schema and the rule engine behind it are private.
 
 from audr.record.codes import ErrorCode
 from audr.record.models import (
+    AUDR,
     SPEC_VERSION,
-    AgentUsageRecord,
     Attribution,
     Cost,
     Emitter,
@@ -29,8 +29,8 @@ from audr.record.models import (
 )
 
 __all__ = [
+    "AUDR",
     "SPEC_VERSION",
-    "AgentUsageRecord",
     "Attribution",
     "Cost",
     "Emitter",

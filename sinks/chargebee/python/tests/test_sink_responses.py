@@ -1,12 +1,12 @@
 import httpx
 import pytest
-from audr import AgentUsageRecord, Attribution, BatchOutcome, RejectedRecord
+from audr import AUDR, Attribution, BatchOutcome, RejectedRecord
 from audr.testing import make_record
 
 from audr_sink_chargebee import ChargebeeSink
 
 
-def _record(**overrides: object) -> AgentUsageRecord:
+def _record(**overrides: object) -> AUDR:
     overrides.setdefault("attribution", Attribution(environment="test", subscription_id="sub_test"))
     return make_record(**overrides)
 

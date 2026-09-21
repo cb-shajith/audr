@@ -8,7 +8,7 @@ import audr.testing
 
 EXPECTED_ROOT = {
     "Client",
-    "AgentUsageRecord",
+    "AUDR",
     "Emitter",
     "Timing",
     "Resource",

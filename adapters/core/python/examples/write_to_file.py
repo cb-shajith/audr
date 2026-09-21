@@ -14,7 +14,7 @@ import audr
 
 
 async def main() -> None:
-    record = audr.AgentUsageRecord(
+    record = audr.AUDR(
         timing=audr.Timing(duration_ms=812),  # event_time defaults to now
         resource=audr.Resource(
             provider="anthropic",

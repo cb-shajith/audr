@@ -12,7 +12,7 @@ from typing import Any, Literal
 
 from audr.ids import uuid7
 from audr.record import (
-    AgentUsageRecord,
+    AUDR,
     Attribution,
     Emitter,
     LlmUsage,
@@ -26,7 +26,7 @@ from audr.sinks import BatchOutcome, BatchResult, RejectedRecord, Sink
 __all__ = ["MemorySink", "assert_sink_contract", "make_record"]
 
 
-def make_record(**overrides: Any) -> AgentUsageRecord:
+def make_record(**overrides: Any) -> AUDR:
     """A valid, minimal generation record, with `overrides` applied."""
     base: dict[str, Any] = {
         "emitter": Emitter(component="harness", name="audr-testing", version="0"),
@@ -43,7 +43,7 @@ def make_record(**overrides: Any) -> AgentUsageRecord:
         "attribution": Attribution(environment="test"),
     }
     base.update(overrides)
-    return AgentUsageRecord(**base)
+    return AUDR(**base)
 
 
 class MemorySink:
@@ -60,7 +60,7 @@ class MemorySink:
     def __init__(
         self,
         *,
-        reject: Callable[[AgentUsageRecord], str | None] | None = None,
+        reject: Callable[[AUDR], str | None] | None = None,
         fail_with: Literal[
             BatchOutcome.RETRYABLE_FAILURE, BatchOutcome.PERMANENT_FAILURE, BatchOutcome.CLOSED
         ]
@@ -70,11 +70,11 @@ class MemorySink:
             raise ValueError("fail_with=BatchOutcome.ACCEPTED is not a failure; omit fail_with")
         self._reject = reject
         self._fail_with = fail_with
-        self.records: list[AgentUsageRecord] = []
+        self.records: list[AUDR] = []
         self.batches = 0
         self.closed = False
 
-    async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+    async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
         if self.closed:
             return BatchResult.closed()
         if self._fail_with is not None:
@@ -85,7 +85,7 @@ class MemorySink:
             return BatchResult.closed()
 
         rejected: list[RejectedRecord] = []
-        accepted: list[AgentUsageRecord] = []
+        accepted: list[AUDR] = []
         for record in batch:
             reason = self._reject(record) if self._reject is not None else None
             if reason is not None:
@@ -104,7 +104,7 @@ class MemorySink:
 async def assert_sink_contract(
     sink: Sink,
     *,
-    records: Sequence[AgentUsageRecord] | None = None,
+    records: Sequence[AUDR] | None = None,
 ) -> None:
     """Assert that `sink` honours the :class:`~audr.sinks.Sink` contract.
 
@@ -134,7 +134,7 @@ async def assert_sink_contract(
         )
 
 
-def _assert_ids_in_batch(batch: Sequence[AgentUsageRecord], result: BatchResult) -> None:
+def _assert_ids_in_batch(batch: Sequence[AUDR], result: BatchResult) -> None:
     """Assert every reported id belongs to the batch and to at most one bucket."""
     batch_ids = {record.record_id for record in batch}
     rejected_ids = [rejection.record_id for rejection in result.rejected]

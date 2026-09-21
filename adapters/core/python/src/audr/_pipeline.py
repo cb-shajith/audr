@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import assert_never
 
-from audr.record import AgentUsageRecord
+from audr.record import AUDR
 from audr.results import (
     DeliveredCallback,
     DeliveryStats,
@@ -39,7 +39,7 @@ class _RecordState(Enum):
 class _QueuedRecord:
     """In-flight wrapper with one monotonic terminal accounting transition."""
 
-    record: AgentUsageRecord
+    record: AUDR
     state: _RecordState = _RecordState.IN_FLIGHT
 
 
@@ -65,7 +65,7 @@ class Pipeline:
         self._on_failure = on_failure
         self._on_delivered = on_delivered
 
-        self._queue: asyncio.Queue[AgentUsageRecord] = asyncio.Queue()
+        self._queue: asyncio.Queue[AUDR] = asyncio.Queue()
         self._sink_lock = asyncio.Lock()
         self._worker_task: asyncio.Task[None] | None = None
         self._in_flight_records: dict[int, _QueuedRecord] = {}
@@ -106,7 +106,7 @@ class Pipeline:
         self._draining.clear()
         self._worker_task = loop.create_task(self._worker(), name="audr-delivery")
 
-    def submit(self, record: AgentUsageRecord) -> SubmitResult:
+    def submit(self, record: AUDR) -> SubmitResult:
         """Queue one record and return immediately; the worker performs all I/O."""
         self._submitted += 1
         if not self._running:
@@ -178,7 +178,7 @@ class Pipeline:
         batch = [first]
         deadline = asyncio.get_running_loop().time() + self._linger_seconds
         while len(batch) < self._batch_max_size:
-            next_record: AgentUsageRecord | None
+            next_record: AUDR | None
             if self._draining.is_set():
                 try:
                     next_record = self._queue.get_nowait()
@@ -191,11 +191,11 @@ class Pipeline:
             batch.append(self._begin_in_flight(next_record))
         return batch
 
-    async def _next_within_linger(self, deadline: float) -> AgentUsageRecord | None:
+    async def _next_within_linger(self, deadline: float) -> AUDR | None:
         remaining = deadline - asyncio.get_running_loop().time()
         if remaining <= 0:
             return None
-        get_task: asyncio.Task[AgentUsageRecord] = asyncio.ensure_future(self._queue.get())
+        get_task: asyncio.Task[AUDR] = asyncio.ensure_future(self._queue.get())
         drain_task: asyncio.Task[bool] = asyncio.ensure_future(self._draining.wait())
         try:
             done, _ = await asyncio.wait(
@@ -349,7 +349,7 @@ class Pipeline:
                 reason=FailureReason.SHUTDOWN,
             )
 
-    def _drop_queued(self, record: AgentUsageRecord) -> None:
+    def _drop_queued(self, record: AUDR) -> None:
         self._dropped += 1
         _LOGGER.warning("record dropped: shutdown")
         self._notify_failure(
@@ -359,7 +359,7 @@ class Pipeline:
             retryable=True,
         )
 
-    def _begin_in_flight(self, record: AgentUsageRecord) -> _QueuedRecord:
+    def _begin_in_flight(self, record: AUDR) -> _QueuedRecord:
         queued = _QueuedRecord(record=record)
         self._in_flight += 1
         self._in_flight_records[id(queued)] = queued
@@ -417,7 +417,7 @@ class Pipeline:
 
     def _notify_failure(
         self,
-        record: AgentUsageRecord,
+        record: AUDR,
         *,
         disposition: Disposition,
         reason: FailureReason,

@@ -12,7 +12,7 @@ import json
 from collections.abc import Mapping, Sequence
 from typing import TypeAlias
 
-from audr import AgentUsageRecord
+from audr import AUDR
 
 from audr_sink_chargebee._event_validation import InvalidUsageEventError
 
@@ -24,9 +24,7 @@ PropertyValue: TypeAlias = str | int | float | bool | None
 _DEFAULT_SEPARATOR = "_"
 
 
-def flatten_audr(
-    record: AgentUsageRecord, *, separator: str = _DEFAULT_SEPARATOR
-) -> dict[str, PropertyValue]:
+def flatten_audr(record: AUDR, *, separator: str = _DEFAULT_SEPARATOR) -> dict[str, PropertyValue]:
     """Flatten every field of an AUDR record into Chargebee scalar properties."""
     return flatten(record.to_dict(), separator=separator)
 

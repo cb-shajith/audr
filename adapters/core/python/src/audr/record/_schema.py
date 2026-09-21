@@ -471,7 +471,7 @@ class Cost(FrozenBase):
     ] = None
 
 
-class AgentUsageRecord(FrozenBase):
+class AUDR(FrozenBase):
     """
     This specification defines the Agent Usage Detail Record (AUDR), a JSON object that describes one metered operation in an agent system. A record identifies its emitter and resource, reports raw model or tool usage, associates the operation with a run, and carries attribution required for downstream cost allocation. A record MAY include an informational cost assertion.
     """

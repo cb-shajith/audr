@@ -16,7 +16,7 @@ from typing import cast
 import pytest
 
 from audr._pipeline import Pipeline
-from audr.record import AgentUsageRecord
+from audr.record import AUDR
 from audr.results import Disposition, FailedRecord, FailureReason
 from audr.sinks import BatchOutcome, BatchResult, RejectedRecord
 from audr.testing import MemorySink, make_record
@@ -46,7 +46,7 @@ async def test_zero_linger_does_not_wait_for_a_second_record() -> None:
             super().__init__()
             self.arrived = asyncio.Event()
 
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             result = await super().deliver(batch)
             self.arrived.set()
             return result
@@ -73,10 +73,10 @@ async def test_a_sink_that_reports_nothing_about_a_record_marks_it_unknown() -> 
     sink that mutates the batch it was handed can leave a record with no verdict at
     all. That record must come back `unknown`, not `sent`.
     """
-    seen: list[AgentUsageRecord] = []
+    seen: list[AUDR] = []
 
     class _DropsOneRecord(MemorySink):
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             seen.extend(batch)
             # Reports on the first record only; the second is never mentioned.
             return BatchResult.accepted(rejected=[RejectedRecord(batch[0].record_id, "dup")])
@@ -96,7 +96,7 @@ async def test_a_sink_that_reports_nothing_about_a_record_marks_it_unknown() -> 
 
 async def test_a_sink_exception_makes_every_record_in_the_batch_unknown() -> None:
     class _Explodes(MemorySink):
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             raise RuntimeError("connection reset mid-write")
 
     failures: list[FailedRecord] = []
@@ -118,7 +118,7 @@ async def test_a_cancelled_delivery_reports_unknown_and_re_raises() -> None:
     started = asyncio.Event()
 
     class _Hangs(MemorySink):
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             started.set()
             await asyncio.sleep(3600)
             return await super().deliver(batch)
@@ -160,12 +160,12 @@ async def test_on_delivered_is_silent_when_the_whole_batch_was_rejected() -> Non
     batch must produce no callback at all rather than an empty one."""
 
     class _RejectsEverything(MemorySink):
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             return BatchResult.accepted(
                 rejected=[RejectedRecord(record.record_id, "dup") for record in batch]
             )
 
-    delivered: list[Sequence[AgentUsageRecord]] = []
+    delivered: list[Sequence[AUDR]] = []
     pipeline = _pipeline(_RejectsEverything(), on_delivered=delivered.append)
     pipeline.start()
     pipeline.submit(make_record())
@@ -178,10 +178,10 @@ async def test_on_delivered_is_silent_when_the_whole_batch_was_rejected() -> Non
 
 
 async def test_on_delivered_reports_only_the_accepted_records() -> None:
-    accepted_only: list[Sequence[AgentUsageRecord]] = []
+    accepted_only: list[Sequence[AUDR]] = []
 
     class _RejectsTheFirst(MemorySink):
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             return BatchResult.accepted(rejected=[RejectedRecord(batch[0].record_id, "dup")])
 
     pipeline = _pipeline(_RejectsTheFirst(), on_delivered=accepted_only.append)
@@ -203,7 +203,7 @@ async def test_an_unrecognised_outcome_reports_unknown_rather_than_sent() -> Non
     """
 
     class _UnknownOutcome(MemorySink):
-        async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+        async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
             return BatchResult(outcome=cast(BatchOutcome, "outcome_from_the_future"))
 
     failures: list[FailedRecord] = []
@@ -222,7 +222,7 @@ async def test_an_unrecognised_outcome_reports_unknown_rather_than_sent() -> Non
 async def test_a_delivered_callback_that_raises_does_not_lose_the_batch(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    def explode(_batch: Sequence[AgentUsageRecord]) -> None:
+    def explode(_batch: Sequence[AUDR]) -> None:
         raise RuntimeError("callback is buggy")
 
     sink = MemorySink()

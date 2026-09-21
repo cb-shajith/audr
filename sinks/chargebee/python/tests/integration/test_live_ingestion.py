@@ -19,7 +19,7 @@ from uuid import uuid4
 import httpx
 import pytest
 from audr import (
-    AgentUsageRecord,
+    AUDR,
     Attribution,
     BatchOutcome,
     Client,
@@ -41,7 +41,7 @@ from audr_sink_chargebee import ChargebeeSink
 pytestmark = pytest.mark.live
 
 
-def _record(subscription_id: str) -> AgentUsageRecord:
+def _record(subscription_id: str) -> AUDR:
     return make_record(
         attribution=Attribution(environment="test", subscription_id=subscription_id),
         run=Run(run_id=str(uuid4()), span_id=uuid4().hex),
@@ -100,8 +100,8 @@ async def test_client_ingests_full_audr_field_matrix(
     assert client.stats.dropped == 0
 
 
-def _build_full_audr_records(subscription_id: str) -> list[AgentUsageRecord]:
-    inference = AgentUsageRecord(
+def _build_full_audr_records(subscription_id: str) -> list[AUDR]:
+    inference = AUDR(
         emitter=Emitter(component="harness", name="audr-live-test", version="0.1.0"),
         timing=Timing(duration_ms=321),
         resource=Resource(
@@ -163,7 +163,7 @@ def _build_full_audr_records(subscription_id: str) -> list[AgentUsageRecord]:
             discount_percent=20,
         ),
     )
-    tool = AgentUsageRecord(
+    tool = AUDR(
         emitter=Emitter(component="harness", name="audr-live-test", version="0.1.0"),
         timing=Timing(duration_ms=654),
         resource=Resource(

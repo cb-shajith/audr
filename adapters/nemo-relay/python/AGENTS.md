@@ -8,7 +8,7 @@ the contribution process are in the top-level [`CONTRIBUTING.md`](../../../CONTR
 
 `adapters/nemo-relay/python` is the `audr-adapter-nemo-relay` distribution: an in-process
 NVIDIA NeMo Relay plugin that observes completed Relay LLM and tool scopes and hands
-attributed `AgentUsageRecord`s to an `audr.Client` the host application owns. The host
+attributed `AUDR` records to an `audr.Client` the host application owns. The host
 constructs the client and its sink and controls startup and shutdown; this package never
 creates either.
 

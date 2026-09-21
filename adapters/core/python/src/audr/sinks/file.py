@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from typing import Literal, TextIO
 
 from audr.errors import ConfigurationError
-from audr.record import AgentUsageRecord
+from audr.record import AUDR
 from audr.sinks.base import BatchResult
 
 FileFormat = Literal["jsonl"]
@@ -54,7 +54,7 @@ class FileSink:
             self._stream = target
             self._owns_stream = False
 
-    async def deliver(self, batch: Sequence[AgentUsageRecord]) -> BatchResult:
+    async def deliver(self, batch: Sequence[AUDR]) -> BatchResult:
         if self._closed:
             return BatchResult.closed()
         try:
