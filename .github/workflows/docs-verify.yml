@@ -1,0 +1,77 @@
+name: Verify documentation
+
+# Every README, CONTRIBUTING and AGENTS file: links resolve, and no distribution version
+# is written into Markdown. External URLs are checked by lychee in a separate job so a
+# slow or rate-limiting upstream cannot fail the offline checks.
+on:
+  pull_request:
+    paths:
+      - '**/*.md'
+      - 'Makefile'
+      - 'tools/check_links.py'
+      - 'tools/check_versions.py'
+      - '**/pyproject.toml'
+      - '**/_version.py'
+      - '.github/workflows/docs-verify.yml'
+  push:
+    branches: [dev, main]
+    paths:
+      - '**/*.md'
+      - 'Makefile'
+      - 'tools/check_links.py'
+      - 'tools/check_versions.py'
+      - '**/pyproject.toml'
+      - '**/_version.py'
+      - '.github/workflows/docs-verify.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs:
+    name: Links and versions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
+        with:
+          python-version: '3.12'
+
+      - name: Relative links and anchors resolve
+        run: make links
+
+      - name: No Markdown file states a distribution version
+        run: make versions
+
+  external-links:
+    name: External links
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      # Links into this repository are checked offline by `make links`, including the
+      # absolute github.com/openaudr/audr/blob/main/... form the PyPI READMEs use, which
+      # would 404 here until the branch reaches main.
+      - name: External URLs respond
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
+        with:
+          fail: true
+          args: >-
+            --no-progress
+            --accept 200,206,429
+            --exclude 'https://github\.com/openaudr/audr/'
+            --exclude 'mailto:'
+            --exclude-path spec/prose
+            '**/*.md'

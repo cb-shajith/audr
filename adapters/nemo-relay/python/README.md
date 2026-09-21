@@ -1,4 +1,6 @@
-# NVIDIA NeMo Relay
+# audr-adapter-nemo-relay
+
+[![PyPI](https://img.shields.io/pypi/v/audr-adapter-nemo-relay?include_prereleases)](https://pypi.org/project/audr-adapter-nemo-relay/)
 
 > **Status: experimental.** Its public names may change in minor releases until it
 > graduates.
@@ -12,9 +14,6 @@ client and its sink, including construction, startup and shutdown.
 ```bash
 pip install "audr-adapter-nemo-relay[runtime]"
 ```
-
-`0.1.0a1` is an alpha release. The command above resolves to it until a final release
-is published.
 
 The extra supports `nemo-relay>=0.8,<0.9`. `plugin.validate(...)` reports an unsupported
 release, and activation requires a supported one to be installed. NeMo Relay is imported
@@ -214,20 +213,13 @@ stable `NeMoRelayDiagnosticCode`.
 (1–1000000, default 10000). Overflow is non-blocking: handoffs are dropped and old
 incomplete scopes are evicted, with corresponding warnings.
 
-## Development
+## Contributing
 
-```bash
-make install   # uv sync --locked --group dev
-make test      # unit tests (nemo_relay-marked runtime tests are deselected)
-make lint      # ruff + mypy
-```
-
-Running the `nemo_relay`-marked lifecycle test in `tests/test_runtime.py` requires the
-`runtime` extra installed:
-
-```bash
-uv sync --locked --group dev --extra runtime
-uv run pytest -m nemo_relay
-```
+[`AGENTS.md`](https://github.com/openaudr/audr/blob/main/adapters/nemo-relay/python/AGENTS.md)
+records how to work inside this package — its layout, its invariants, and its commands.
+[`adapters/CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/adapters/CONTRIBUTING.md)
+describes how to contribute an adapter, and the top-level
+[`CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/CONTRIBUTING.md) covers
+repository setup and process.
 
 Licensed under Apache-2.0.

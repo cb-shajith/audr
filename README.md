@@ -4,9 +4,10 @@
 [![Core SDK](https://github.com/openaudr/audr/actions/workflows/adapter-core-python-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/adapter-core-python-verify.yml)
 [![NeMo Relay adapter](https://github.com/openaudr/audr/actions/workflows/adapter-nemo-relay-python-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/adapter-nemo-relay-python-verify.yml)
 [![Chargebee sink](https://github.com/openaudr/audr/actions/workflows/sink-chargebee-python-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/sink-chargebee-python-verify.yml)
+[![Docs](https://github.com/openaudr/audr/actions/workflows/docs-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/docs-verify.yml)
 
 [![Spec v1.0.0](https://img.shields.io/badge/spec-v1.0.0-blue)](spec/SPEC.md)
-[![PyPI](https://img.shields.io/pypi/v/audr?label=pypi%20audr)](https://pypi.org/project/audr/)
+[![PyPI](https://img.shields.io/pypi/v/audr?include_prereleases&label=pypi%20audr)](https://pypi.org/project/audr/)
 [![Python versions](https://img.shields.io/pypi/pyversions/audr)](https://pypi.org/project/audr/)
 [![License Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
@@ -65,31 +66,41 @@ make check     # schema, examples, conformance fixtures, cross-references, stale
 make spec      # regenerate spec/SPEC.md from the schema, the outline and the prose
 ```
 
-## SDKs
+## Emitting records
+
+Three parts work together. An **adapter** observes an agent runtime and builds a record per
+metered operation; the **core SDK** validates, batches and accounts for records through a
+`Client`; a **sink** delivers each batch to a destination. Install the core and a sink, wrap
+the sink in a client, and either call `client.record()` yourself or let an adapter do it.
 
 ```bash
-pip install audr
+pip install audr audr-sink-chargebee
 ```
-
-`0.1.0a1` is an alpha release. `pip install audr` resolves to it until a final
-release is published.
 
 ```python
+import asyncio
 import audr
+from audr_sink_chargebee import ChargebeeSink
 
-record = audr.AgentUsageRecord(
-    timing=audr.Timing(duration_ms=812),                         # event_time defaults to now
-    resource=audr.Resource(provider="anthropic", type="model", name="claude-sonnet-5",
-                           operation="generation", modality="text"),
-    usage=audr.Usage(llm=audr.LlmUsage(input_tokens=1200, output_tokens=340, requests=1)),
-    run=audr.Run(run_id="01J8ZQ8Y2K3M4N5P6Q7R8S9T0V", span_id="turn-3", run_type="agent_run"),
-    attribution=audr.Attribution(environment="production", account_id="acct_42"),
-)                                                                # record_id and spec_version defaulted
+
+async def main() -> None:
+    sink = ChargebeeSink(site="acme", api_key="cb_live_...")   # any Sink: a file, a queue, Chargebee
+    async with audr.Client(
+        sink,
+        emitter=audr.Emitter(component="harness", name="my-harness", version="1.4.0"),
+    ) as client:
+        record = audr.AgentUsageRecord(...)   # full construction: adapters/core/python/README.md
+        client.record(record)                 # an adapter makes this call on your behalf
+
+
+asyncio.run(main())
 ```
 
-Every record carries an emitter naming what produced it; an `audr.Client` stamps one
-onto every record it delivers. The [Python SDK README](adapters/core/python/README.md)
-covers the client, batching and sinks.
+| Part | Reference implementation | Guide |
+| --- | --- | --- |
+| Core SDK | [`audr`](adapters/core/python/README.md) | [`adapters/core/README.md`](adapters/core/README.md) — the `Client`, the sink contract, delivery states |
+| Adapters | [`audr-adapter-nemo-relay`](adapters/nemo-relay/python/README.md) | [`adapters/README.md`](adapters/README.md) |
+| Sinks | [`audr-sink-chargebee`](sinks/chargebee/python/README.md) | [`sinks/README.md`](sinks/README.md) |
 
 ## Status
 
@@ -110,7 +121,8 @@ Stewarded by Chargebee. Contact us at <audr@chargebee.com>.
 
 Tell us where AUDR breaks for a cost model you have and we haven't imagined.
 [Open an issue](https://github.com/openaudr/audr/issues) or email
-<audr@chargebee.com>. See [CONTRIBUTING.md](CONTRIBUTING.md).
+<audr@chargebee.com>. See [CONTRIBUTING.md](CONTRIBUTING.md); participation is governed by
+the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Security
 

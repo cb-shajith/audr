@@ -1,8 +1,8 @@
 # AGENTS.md
 
-Guidance for coding agents and contributors working in this package. Human-facing setup
-lives in the repository's top-level `CONTRIBUTING.md`; this file records the conventions
-the code follows so changes stay consistent.
+Directives for working inside this package. Tier-wide directives are in
+[`adapters/AGENTS.md`](../../AGENTS.md); repository setup, the shared Python toolchain and
+the contribution process are in the top-level [`CONTRIBUTING.md`](../../../CONTRIBUTING.md).
 
 ## What this is
 
@@ -23,6 +23,7 @@ particular adapter/runtime, is a change in the wrong direction.
 | `tests/` | The pytest suite for this distribution |
 | `examples/` | Runnable examples, no credentials or network calls required |
 | `scripts/gen_models.py` | Generates `src/audr/record/_schema.py` from the spec |
+| `scripts/verify_distribution.py` | The isolation check `make isolation` runs against the built wheel |
 | `../../../spec/` | The normative schema and prose — not packaged into the wheel |
 | `../../../conformance/` | Shared fixtures this suite runs against |
 
@@ -44,32 +45,27 @@ particular adapter/runtime, is a change in the wrong direction.
 4. No representation, log message, or exception may include an AUDR record's field
    *values* — names and JSON-pointer paths only. `ValidationIssue` carries a code and a
    path, never a value, for this reason.
-5. Never hardcode or commit API keys, real site names, or `.env` files. Sinks that need
-   credentials take them as constructor arguments backed by environment variables at the
-   call site, not baked into this package.
-6. Keep the public surface small. Prefer keyword-only constructors and explicit types.
-7. Match the existing toolchain rather than adding a new one: `pyproject.toml`, `uv`,
-   Ruff, mypy, pytest.
-8. Do not weaken or skip lint, type-checking, or the coverage gate to make a change pass.
+5. Keep the public surface small. Prefer keyword-only constructors and explicit types.
 
 ## Toolchain
 
-- **Python:** 3.11+
-- **Layout:** `src/` (PEP 517 via Hatchling); version in `src/audr/_version.py`
-- **Runtime deps:** `pydantic`, `uuid6` — nothing destination-specific (no `httpx`,
-  no adapter runtime)
-- **Formatter / linter:** Ruff (`line-length = 100`, rules `E F I UP B RUF`)
-- **Types:** mypy `strict` with the Pydantic plugin; `py.typed` ships in the wheel
-- **Tests:** pytest with `asyncio_mode = "auto"`; coverage gated at 90%
+The shared toolchain — `uv`, Ruff, mypy `strict` with the Pydantic plugin, pytest with
+`asyncio_mode = "auto"`, coverage gated at 90% — is defined in the top-level
+[`CONTRIBUTING.md`](../../../CONTRIBUTING.md#shared-python-toolchain). Specific to this
+package:
+
+- **Runtime deps:** `pydantic`, `uuid6` — nothing destination-specific (no `httpx`, no
+  adapter runtime).
+- **Version:** `src/audr/_version.py`; `py.typed` ships in the wheel.
+
+Targets beyond the shared `install / lint / test / build`:
 
 ```bash
-make install        # uv sync --locked --group dev
-make lint            # ruff check + ruff format --check + mypy
-make models-check    # generated models match spec/
-make test            # pytest --cov
-make build           # uv build
+make models          # regenerate src/audr/record/_schema.py from spec/
+make models-check    # fail if the generated models drift from spec/
+make conformance     # the shared fixtures only (tests/test_conformance.py)
 make isolation       # build, then verify the wheel installs/runs with no adapter deps
-make verify           # lint + models-check + test + isolation
+make verify          # lint + models-check + test + isolation
 ```
 
 ## Conventions
@@ -92,7 +88,7 @@ make verify           # lint + models-check + test + isolation
 ## What not to do
 
 - Do not implement a destination-specific sink (Chargebee, a message queue, etc.) in this
-  package; it belongs in its own adapter/distribution.
+  package; it belongs in its own distribution under `sinks/`.
 - Do not add behaviour that depends on a specific destination's error format.
 - Do not package the AUDR JSON Schema into the wheel.
 - Do not add `httpx`, `aiofiles`, or any other adapter-shaped dependency to this

@@ -1,4 +1,4 @@
-.PHONY: help spec check schema examples conformance lint fresh install clean all
+.PHONY: help spec check schema examples conformance lint fresh links versions install clean all
 .PHONY: python core-python adapter-nemo-relay-python sink-chargebee-python
 
 PYTHON ?= python3
@@ -13,7 +13,7 @@ install: ## Install the tooling dependencies
 spec: ## Regenerate the specification from the schema, outline and prose
 	@$(PYTHON) tools/render.py
 
-check: schema examples conformance lint fresh ## Everything CI runs
+check: schema examples conformance lint fresh links versions ## Everything CI runs
 	@echo "All checks passed."
 
 schema: ## Meta-validate the schema against JSON Schema Draft 2020-12
@@ -32,6 +32,12 @@ lint: ## Check $$id cross-references resolve
 
 fresh: ## Fail if any generated file is stale
 	@$(PYTHON) tools/render.py --check
+
+links: ## Check every relative link and heading anchor in Markdown resolves
+	@$(PYTHON) tools/check_links.py
+
+versions: ## Fail if a distribution version is written into any Markdown file
+	@$(PYTHON) tools/check_versions.py
 
 core-python: ## Verify the core Python SDK (adapters/core/python)
 	@$(MAKE) -C adapters/core/python verify

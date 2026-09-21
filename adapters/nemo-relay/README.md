@@ -1,11 +1,14 @@
 # NVIDIA NeMo Relay
 
-An adapter that observes completed NVIDIA NeMo Relay LLM and tool scopes and turns them
-into [AUDR](../../spec/SPEC.md) records for an existing `audr.Client`.
+An [adapter](../README.md) that observes completed NVIDIA NeMo Relay LLM and tool scopes
+and turns them into [AUDR](../../spec/SPEC.md) records for an `audr.Client` the host
+application owns. Attribution is read from the root Relay scope's metadata, with
+configurable defaults; the adapter reads no prompts, responses, tool arguments or tool
+results.
 
-| Language | Status | Distribution |
+| Language | Distribution | Package guide |
 | --- | --- | --- |
-| [Python](python/) | Pre-release `0.1.0a1` | `audr-adapter-nemo-relay` |
+| [Python](python/) | [![PyPI](https://img.shields.io/pypi/v/audr-adapter-nemo-relay?include_prereleases&label=audr-adapter-nemo-relay)](https://pypi.org/project/audr-adapter-nemo-relay/) | [`python/README.md`](python/README.md) — install, activation and shutdown, attribution, record shape |
 
-See the [Python package README](python/README.md) for installation, activation, and
-compatibility notes.
+To contribute a change, see [`python/AGENTS.md`](python/AGENTS.md). To contribute a new
+adapter, see [`../CONTRIBUTING.md`](../CONTRIBUTING.md).

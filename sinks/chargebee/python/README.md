@@ -1,5 +1,7 @@
 # audr-sink-chargebee
 
+[![PyPI](https://img.shields.io/pypi/v/audr-sink-chargebee?include_prereleases)](https://pypi.org/project/audr-sink-chargebee/)
+
 The Chargebee sink for [AUDR](https://openaudr.dev). Delivers `audr.AgentUsageRecord`
 batches to a site's usage-ingest batch endpoint.
 
@@ -7,29 +9,15 @@ batches to a site's usage-ingest batch endpoint.
 pip install audr-sink-chargebee
 ```
 
-`0.1.0a1` is an alpha release. `pip install audr-sink-chargebee` resolves to it
-until a final release is published.
-
 ```python
 import asyncio
 import audr
 from audr_sink_chargebee import ChargebeeSink
 
-record = audr.AgentUsageRecord(
-    timing=audr.Timing(duration_ms=812),
-    resource=audr.Resource(
-        provider="anthropic",
-        type="model",
-        name="claude-sonnet-5",
-        operation="generation",
-        modality="text",
-    ),
-    usage=audr.Usage(llm=audr.LlmUsage(input_tokens=1200, output_tokens=340, requests=1)),
-    run=audr.Run(run_id="01J8ZQ8Y2K3M4N5P6Q7R8S9T0V", span_id="turn-3", run_type="agent_run"),
-    attribution=audr.Attribution(
-        environment="production", account_id="acct_42", subscription_id="sub_123"
-    ),
-)
+# A full record; construction is documented in the core SDK README:
+# https://github.com/openaudr/audr/blob/main/adapters/core/python/README.md
+# Chargebee additionally requires attribution.subscription_id.
+record = audr.AgentUsageRecord(...)
 
 
 async def main() -> None:
@@ -127,5 +115,14 @@ place of `site`/`ingest_domain`:
 ```python
 sink = ChargebeeSink(ingest_url="https://acme.ingest.chargebee.com", api_key="...")
 ```
+
+## Contributing
+
+[`AGENTS.md`](https://github.com/openaudr/audr/blob/main/sinks/chargebee/python/AGENTS.md)
+records how to work inside this package — its layout, its invariants, and its commands.
+[`sinks/CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/sinks/CONTRIBUTING.md)
+describes how to contribute a sink, and the top-level
+[`CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/CONTRIBUTING.md) covers
+repository setup and process.
 
 Licensed under Apache-2.0.
