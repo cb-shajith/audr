@@ -2,7 +2,6 @@
 .PHONY: python core-python adapter-nemo-relay-python sink-chargebee-python
 
 PYTHON ?= python3
-VERSION ?= 1.0.0
 
 help: ## Show this help
 	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -12,7 +11,7 @@ install: ## Install the tooling dependencies
 	$(PYTHON) -m pip install -r requirements.txt
 
 spec: ## Regenerate the specification from the schema, outline and prose
-	@$(PYTHON) tools/render.py --version $(VERSION)
+	@$(PYTHON) tools/render.py
 
 check: schema examples conformance lint fresh ## Everything CI runs
 	@echo "All checks passed."
@@ -23,7 +22,7 @@ schema: ## Meta-validate the schema against JSON Schema Draft 2020-12
 	print('  schema is a valid Draft 2020-12 schema')"
 
 examples: ## Validate every specification example against the schema
-	@$(PYTHON) tools/validate_examples.py $(VERSION)
+	@$(PYTHON) tools/validate_examples.py
 
 conformance: ## Run the shared conformance fixtures
 	@$(PYTHON) conformance/runner/python/run.py
@@ -32,7 +31,7 @@ lint: ## Check $$id cross-references resolve
 	@$(PYTHON) tools/lint.py
 
 fresh: ## Fail if any generated file is stale
-	@$(PYTHON) tools/render.py --version $(VERSION) --check
+	@$(PYTHON) tools/render.py --check
 
 core-python: ## Verify the core Python SDK (adapters/core/python)
 	@$(MAKE) -C adapters/core/python verify

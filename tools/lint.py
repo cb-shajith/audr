@@ -10,34 +10,47 @@ resolve it at runtime. Checks that the two agree.
 from __future__ import annotations
 
 import json
+import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def check_schema_id() -> list[str]:
-    """$id must match where the schema is actually published.
-
-    openaudr.dev serves the schema verbatim at this path, so the two cannot
-    be allowed to drift.
+def check_version_claims() -> list[str]:
+    """
+    $id names the URL the schema is published at, and openaudr.dev serves the
+    schema verbatim at that path. `pattern` states the range of spec_version
+    values a record may carry; `examples[0]` states the one concrete version
+    this schema is.
     """
     schema = json.loads((ROOT / "spec/audr.schema.json").read_text())
-    version = schema["properties"]["spec_version"]["examples"][0]
+    spec_version = schema["properties"]["spec_version"]
+    version = spec_version["examples"][0]
+    pattern = spec_version["pattern"]
+
+    problems = []
     expected = f"https://openaudr.dev/spec/v{version}/audr.schema.json"
     if schema["$id"] != expected:
-        return [f"$id is {schema['$id']!r}, but the site publishes it at {expected!r}"]
-    return []
+        problems.append(
+            f"$id is {schema['$id']!r}, but the site publishes it at {expected!r}"
+        )
+    if not re.fullmatch(pattern, version):
+        problems.append(
+            f"spec_version example {version!r} does not match its own "
+            f"pattern {pattern}"
+        )
+    return problems
 
 
 def main() -> int:
-    problems = check_schema_id()
+    problems = check_version_claims()
     if problems:
         print(f"{len(problems)} cross-reference problem(s):")
         for p in problems:
             print(f"  {p}")
         return 1
-    print("  $id cross-references resolve")
+    print("  version claims agree across the schema")
     return 0
 
 

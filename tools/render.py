@@ -14,6 +14,7 @@ differs. That is what CI runs, so a hand-edited generated file fails the build.
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -24,6 +25,7 @@ import schema_model as sm  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 BANNER = "GENERATED FILE -- field semantics are derived from audr.schema.json."
+VERSION_IN_ID = re.compile(r"/spec/v(\d+\.\d+\.\d+)/")
 
 
 # --------------------------------------------------------------------------
@@ -31,20 +33,33 @@ BANNER = "GENERATED FILE -- field semantics are derived from audr.schema.json."
 # --------------------------------------------------------------------------
 
 
-def load_sources(version: str):
+def load_sources():
     base = ROOT / "spec"
     outline = yaml.safe_load((base / "outline.yaml").read_text())
     schema = sm.load(base / outline["schema"])
     return base, outline, schema
 
 
-def read_prose(base: Path, rel: str) -> tuple[dict, str]:
+def version_of(schema: dict) -> str:
+    """The document version, derived from the schema's $id."""
+    match = VERSION_IN_ID.search(schema["$id"])
+    if not match:
+        raise SystemExit(f"$id {schema['$id']!r} carries no /spec/vX.Y.Z/ version")
+    return match.group(1)
+
+
+def substitute(text: str, version: str) -> str:
+    """Resolve the {version} placeholder in authored text."""
+    return text.replace("{version}", version)
+
+
+def read_prose(base: Path, rel: str, version: str) -> tuple[dict, str]:
     """Split a prose partial into its YAML front matter and body."""
     text = (base / rel).read_text()
     if text.startswith("---\n"):
         _, fm, body = text.split("---\n", 2)
-        return yaml.safe_load(fm) or {}, body.strip()
-    return {}, text.strip()
+        return yaml.safe_load(fm) or {}, substitute(body.strip(), version)
+    return {}, substitute(text.strip(), version)
 
 
 def read_example(base: Path, rel: str) -> str:
@@ -95,7 +110,7 @@ def md_table(rows: list[dict]) -> str:
 # --------------------------------------------------------------------------
 
 
-def metadata(schema: dict, outline: dict) -> list[tuple[str, str]]:
+def metadata(schema: dict) -> list[tuple[str, str]]:
     return [
         ("Schema ID", f"`{schema['$id']}`"),
         ("Root type", f"JSON {schema['type']}"),
@@ -110,34 +125,37 @@ def metadata(schema: dict, outline: dict) -> list[tuple[str, str]]:
 
 
 def render_markdown(base: Path, outline: dict, schema: dict) -> str:
+    version = version_of(schema)
     p = [f"<!-- {BANNER} -->", ""]
     p.append(f"# {outline['title']}")
     p.append("")
-    p.append(f"**{outline['subtitle']}**")
+    p.append(f"**{substitute(outline['subtitle'], version)}**")
     p.append("")
     p.append(outline["tagline"])
     p.append("")
 
     for rel in outline["front"]:
-        fm, body = read_prose(base, rel)
+        fm, body = read_prose(base, rel, version)
         if fm.get("title"):
             num = f"{fm['number']}. " if fm.get("number") else ""
+            p.extend(anchor(fm.get("id")))
             p.append(f"## {num}{fm['title']}")
             p.append("")
         p.append(body)
         p.append("")
         if fm.get("id") == "introduction":
-            for k, v in metadata(schema, outline):
+            for k, v in metadata(schema):
                 p.append(f"**{k}**: {v}")
                 p.append("")
 
     for sec in outline["sections"]:
+        p.extend(anchor(sec.get("id")))
         p.append(f"## {sec['number']} {heading_text(sec)}")
         p.append("")
         if sec.get("heading_only"):
             continue
         if sec.get("prose"):
-            _, body = read_prose(base, sec["prose"])
+            _, body = read_prose(base, sec["prose"], version)
             p.append(body)
             p.append("")
         n = 1
@@ -171,15 +189,20 @@ def render_markdown(base: Path, outline: dict, schema: dict) -> str:
             p.append("")
 
     for rel in outline["back"]:
-        _, body = read_prose(base, rel)
+        _, body = read_prose(base, rel, version)
         p.append("---")
         p.append("")
         p.append(body)
         p.append("")
 
-    p.append(f"Agent Usage Detail Record · Specification v{outline['version']}")
+    p.append(f"Agent Usage Detail Record · Specification v{version}")
     p.append("")
     return "\n".join(p).rstrip() + "\n"
+
+
+def anchor(ident: str | None) -> list[str]:
+    """A stable link target for a heading."""
+    return [f'<a id="{ident}"></a>', ""] if ident else []
 
 
 def heading_text(sec: dict) -> str:
@@ -193,19 +216,18 @@ def heading_text(sec: dict) -> str:
 # --------------------------------------------------------------------------
 
 
-def outputs(version: str) -> dict[Path, str]:
-    base, outline, schema = load_sources(version)
+def outputs() -> dict[Path, str]:
+    base, outline, schema = load_sources()
     return {base / "SPEC.md": render_markdown(base, outline, schema)}
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--version", default="1.0.0")
     ap.add_argument("--check", action="store_true", help="fail if outputs are stale")
     args = ap.parse_args()
 
     stale = []
-    for path, content in outputs(args.version).items():
+    for path, content in outputs().items():
         rel = path.relative_to(ROOT)
         if args.check:
             if not path.exists() or path.read_text() != content:

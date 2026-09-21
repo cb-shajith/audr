@@ -12,12 +12,10 @@
 # `mode: fragment` means the example is a partial record: property constraints
 # are still checked, presence rules are not.
 
-version: "1.0.0"
 schema: audr.schema.json
-schema_id: https://openaudr.dev/spec/v1.0.0/audr.schema.json
 
 title: Agent Usage Detail Record (AUDR)
-subtitle: Technical Specification · Version 1.0.0
+subtitle: Technical Specification · Version {version}
 tagline: A JSON record format for agent cost monitoring and monetization.
 
 front:
