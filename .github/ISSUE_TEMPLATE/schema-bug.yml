@@ -1,0 +1,40 @@
+name: Schema bug
+description: The schema accepts a record it should reject, or rejects one it should accept
+labels: ["schema"]
+body:
+  - type: dropdown
+    id: direction
+    attributes:
+      label: What is wrong?
+      options:
+        - Accepts a record it should reject
+        - Rejects a record it should accept
+        - Validator error or crash
+    validations:
+      required: true
+  - type: textarea
+    id: record
+    attributes:
+      label: The record
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected versus actual
+      description: >
+        Cite the section of the specification that says what should happen.
+    validations:
+      required: true
+  - type: input
+    id: validator
+    attributes:
+      label: Validator and version
+      placeholder: "python jsonschema 4.25.0"
+  - type: markdown
+    attributes:
+      value: |
+        If this is a schema defect that could crash or hang a sink, report it
+        privately instead — see
+        [SECURITY.md](https://github.com/openaudr/audr/blob/main/SECURITY.md).

@@ -1,0 +1,19 @@
+# Review ownership. A pull request touching a path below requests a review from
+# the maintainers team.
+
+# Default
+*                              @openaudr/audr-maintainers
+
+# The normative surface. A change here changes what implementers must do.
+/spec/audr.schema.json         @openaudr/audr-maintainers
+
+# Conformance fixtures are the contract every SDK is written against.
+/conformance/                  @openaudr/audr-maintainers
+
+# Continuous integration and deployment.
+/.github/workflows/            @openaudr/audr-maintainers
+
+# The Python packages.
+/adapters/core/python/         @openaudr/audr-maintainers
+/adapters/nemo-relay/python/   @openaudr/audr-maintainers
+/sinks/chargebee/python/       @openaudr/audr-maintainers

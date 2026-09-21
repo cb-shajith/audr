@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Propose a change to the specification
+    url: https://github.com/openaudr/audr/blob/main/CONTRIBUTING.md
+    about: Normative changes start with an issue describing the problem.
+  - name: Report a security issue
+    url: https://github.com/openaudr/audr/security/advisories/new
+    about: Do not open a public issue for a suspected vulnerability.
