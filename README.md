@@ -2,6 +2,7 @@
 
 [![Spec](https://github.com/openaudr/audr/actions/workflows/spec-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/spec-verify.yml)
 [![Core SDK](https://github.com/openaudr/audr/actions/workflows/adapter-core-python-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/adapter-core-python-verify.yml)
+[![LiteLLM adapter](https://github.com/openaudr/audr/actions/workflows/adapter-litellm-python-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/adapter-litellm-python-verify.yml)
 [![NeMo Relay adapter](https://github.com/openaudr/audr/actions/workflows/adapter-nemo-relay-python-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/adapter-nemo-relay-python-verify.yml)
 [![Chargebee sink](https://github.com/openaudr/audr/actions/workflows/sink-chargebee-python-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/sink-chargebee-python-verify.yml)
 
@@ -90,6 +91,19 @@ record = audr.AgentUsageRecord(
 Every record carries an emitter naming what produced it; an `audr.Client` stamps one
 onto every record it delivers. The [Python SDK README](adapters/core/python/README.md)
 covers the client, batching and sinks.
+
+## Integrations
+
+Runtime adapters turn framework and router events into records for the same client:
+
+```bash
+pip install audr-adapter-litellm
+pip install "audr-adapter-nemo-relay[runtime]"
+```
+
+See the [LiteLLM adapter](adapters/litellm/python/README.md) for SDK and Router model
+usage, and the [NeMo Relay adapter](adapters/nemo-relay/python/README.md) for Relay LLM
+and tool scopes.
 
 ## Status
 
