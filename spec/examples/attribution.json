@@ -1,0 +1,9 @@
+{
+  "environment": "production",
+  "user_id": "user-7",
+  "account_id": "account-42",
+  "subscription_id": "subscription-9",
+  "labels": {
+    "team": "platform"
+  }
+}

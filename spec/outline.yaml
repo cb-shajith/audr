@@ -1,0 +1,177 @@
+# Document outline for the AUDR specification.
+#
+# This file says what the document CONTAINS and in what order. It never says
+# what a field means -- field names, types, requirement levels and summaries all
+# come from audr.schema.json, and narrative text comes from the prose/ partials.
+#
+# Each section may carry:
+#   prose    a Markdown partial holding hand-written narrative
+#   example  a JSON file under examples/, validated in CI against `pointer`
+#   table    a JSON pointer to the object whose properties become a field table
+#
+# `mode: fragment` means the example is a partial record: property constraints
+# are still checked, presence rules are not.
+
+version: "1.0.0"
+schema: audr.schema.json
+schema_id: https://openaudr.dev/spec/v1.0.0/audr.schema.json
+
+title: Agent Usage Detail Record (AUDR)
+subtitle: Technical Specification · Version 1.0.0
+tagline: A JSON record format for agent cost monitoring and monetization.
+
+front:
+  - prose/00-attribution.md
+  - prose/01-introduction.md
+  - prose/02-definitions.md
+
+sections:
+  - id: specification
+    number: "3"
+    title: Specification
+    heading_only: true
+
+  - id: format
+    number: "3.1"
+    title: Format
+    prose: prose/03-01-format.md
+
+  - id: conformance
+    number: "3.2"
+    title: Conformance
+    prose: prose/03-02-conformance.md
+
+  - id: validation-boundaries
+    number: "3.3"
+    title: Validation Boundaries
+    prose: prose/03-03-validation-boundaries.md
+
+  - id: audr-record
+    number: "3.4"
+    title: AUDR Record Object
+    code: false
+    prose: prose/03-04-audr-record.md
+    example: examples/record.json
+    pointer: "#"
+    table:
+      pointer: "#"
+
+  - id: identity
+    number: "3.5"
+    title: Record Identity
+    code: false
+    prose: prose/03-05-identity.md
+    example: examples/identity.json
+    pointer: "#"
+    mode: fragment
+    table:
+      pointer: "#"
+      only: [spec_version, record_id, corrects]
+
+  - id: emitter
+    number: "3.6"
+    title: emitter
+    prose: prose/03-06-emitter.md
+    example: examples/emitter.json
+    pointer: "#/properties/emitter"
+    table:
+      pointer: "#/properties/emitter"
+      prefix: "emitter."
+
+  - id: timing
+    number: "3.7"
+    title: timing
+    prose: prose/03-07-timing.md
+    example: examples/timing.json
+    pointer: "#/properties/timing"
+    table:
+      pointer: "#/properties/timing"
+      prefix: "timing."
+
+  - id: resource
+    number: "3.8"
+    title: resource
+    prose: prose/03-08-resource.md
+    example: examples/resource.json
+    pointer: "#/properties/resource"
+    table:
+      pointer: "#/properties/resource"
+      prefix: "resource."
+
+  - id: run
+    number: "3.9"
+    title: run
+    prose: prose/03-09-run.md
+    example: examples/run.json
+    pointer: "#/properties/run"
+    table:
+      pointer: "#/properties/run"
+      prefix: "run."
+
+  - id: attribution
+    number: "3.10"
+    title: attribution
+    prose: prose/03-10-attribution.md
+    example: examples/attribution.json
+    pointer: "#/properties/attribution"
+    table:
+      pointer: "#/properties/attribution"
+      prefix: "attribution."
+
+  - id: usage
+    number: "3.11"
+    title: usage
+    prose: prose/03-11-usage.md
+    example: examples/usage-llm.json
+    pointer: "#/properties/usage"
+    table:
+      pointer: "#/properties/usage"
+      prefix: "usage."
+    subtables:
+      - number: "3.11.3"
+        title: "`usage.llm` Field Descriptions"
+        pointer: "#/properties/usage/properties/llm"
+        prefix: "usage.llm."
+      - number: "3.11.4"
+        title: "`usage.tool` Field Descriptions"
+        pointer: "#/properties/usage/properties/tool"
+        prefix: "usage.tool."
+        example: examples/usage-tool.json
+        example_pointer: "#/properties/usage"
+
+  - id: cost
+    number: "3.12"
+    title: cost
+    prose: prose/03-12-cost.md
+    example: examples/cost.json
+    pointer: "#/properties/cost"
+    table:
+      pointer: "#/properties/cost"
+      prefix: "cost."
+      order: [total_cost, currency, original_cost, discount_amount, discount_percent, llm, tool]
+    subtables:
+      - number: "3.12.3"
+        title: "`cost.llm` Field Descriptions"
+        pointer: "#/properties/cost/properties/llm"
+        prefix: "cost.llm."
+      - number: "3.12.4"
+        title: "`cost.tool` Field Descriptions"
+        pointer: "#/properties/cost/properties/tool"
+        prefix: "cost.tool."
+        example: examples/cost-tool.json
+        example_pointer: "#/properties/cost"
+
+  - id: cross-field
+    number: "3.13"
+    title: Cross-Field Operation Constraints
+    prose: prose/03-13-cross-field.md
+    examples:
+      - path: examples/cross-field-model.json
+        pointer: "#"
+        mode: fragment
+      - path: examples/cross-field-tool.json
+        pointer: "#"
+        mode: fragment
+
+back:
+  - prose/99-summary.md

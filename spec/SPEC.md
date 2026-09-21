@@ -53,7 +53,6 @@ stored records and is out of scope for this specification.
 
 - Rated customer amounts, invoice generation, and revenue recognition.
 - Sink operational policies such as orphan wait duration and merge timing.
-- Provider registry contents beyond the `resource.provider` slug convention.
 - Agent internal state records and observability event formats.
 
 ### 1.4 Record Processing Model
