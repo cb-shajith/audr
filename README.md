@@ -1,6 +1,13 @@
 # AUDR — Agent Usage Detail Record
 
-[![Spec v1.0.0](https://img.shields.io/badge/spec-v1.0.0-blue)](spec/v1.0.0/SPEC.md)
+[![Spec](https://github.com/openaudr/audr/actions/workflows/spec-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/spec-verify.yml)
+[![Core SDK](https://github.com/openaudr/audr/actions/workflows/adapter-core-python-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/adapter-core-python-verify.yml)
+[![NeMo Relay adapter](https://github.com/openaudr/audr/actions/workflows/adapter-nemo-relay-python-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/adapter-nemo-relay-python-verify.yml)
+[![Chargebee sink](https://github.com/openaudr/audr/actions/workflows/sink-chargebee-python-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/sink-chargebee-python-verify.yml)
+
+[![Spec v1.0.0](https://img.shields.io/badge/spec-v1.0.0-blue)](spec/SPEC.md)
+[![PyPI](https://img.shields.io/pypi/v/audr?label=pypi%20audr)](https://pypi.org/project/audr/)
+[![Python versions](https://img.shields.io/pypi/pyversions/audr)](https://pypi.org/project/audr/)
 [![License Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
 An open standard for recording who initiated an agent run and what each step
@@ -36,11 +43,13 @@ attribution that the records join.
 
 ## Start here
 
-| If you want to | Read |
+| Path | Contains |
 | --- | --- |
-| Implement it | [Specification v1.0.0](spec/v1.0.0/SPEC.md) |
-| Validate records | [`audr.schema.json`](spec/v1.0.0/audr.schema.json) |
-| See a complete record | [`record.json`](spec/v1.0.0/examples/record.json) |
+| [`spec/`](spec/SPEC.md) | The standard: [`SPEC.md`](spec/SPEC.md) to implement it, [`audr.schema.json`](spec/audr.schema.json) to validate records, [`examples/record.json`](spec/examples/record.json) for a complete record |
+| [`conformance/`](conformance/README.md) | Language-neutral fixtures every implementation should reproduce |
+| [`adapters/`](adapters/README.md) | Things that produce records — the [Python SDK](adapters/core/python/README.md) and runtime adapters |
+| [`sinks/`](sinks/README.md) | Things that consume records — destinations such as Chargebee |
+| `tools/` | The specification generator, driven by the [`Makefile`](Makefile) |
 
 The schema's canonical URL is its `$id`:
 
@@ -48,24 +57,43 @@ The schema's canonical URL is its `$id`:
 https://openaudr.dev/spec/v1.0.0/audr.schema.json
 ```
 
-Validate the example against it with any JSON Schema Draft 2020-12 validator:
+Any JSON Schema Draft 2020-12 validator checks a record against it. In this
+repository, `make examples` validates every example in the specification.
 
 ```bash
-pip install jsonschema
-python3 -c "
-import json, urllib.request
-from jsonschema import Draft202012Validator as V
-schema = json.load(urllib.request.urlopen('https://openaudr.dev/spec/v1.0.0/audr.schema.json'))
-V(schema).validate(json.load(open('spec/v1.0.0/examples/record.json')))
-print('valid')
-"
+make check     # schema, examples, conformance fixtures, cross-references, staleness
+make spec      # regenerate spec/SPEC.md from the schema, the outline and the prose
 ```
+
+## SDKs
+
+```bash
+pip install audr
+```
+
+`0.1.0a1` is an alpha release. `pip install audr` resolves to it until a final
+release is published.
+
+```python
+import audr
+
+record = audr.AgentUsageRecord(
+    timing=audr.Timing(duration_ms=812),                         # event_time defaults to now
+    resource=audr.Resource(provider="anthropic", type="model", name="claude-sonnet-5",
+                           operation="generation", modality="text"),
+    usage=audr.Usage(llm=audr.LlmUsage(input_tokens=1200, output_tokens=340, requests=1)),
+    run=audr.Run(run_id="01J8ZQ8Y2K3M4N5P6Q7R8S9T0V", span_id="turn-3", run_type="agent_run"),
+    attribution=audr.Attribution(environment="production", account_id="acct_42"),
+)                                                                # record_id and spec_version defaulted
+```
+
+Every record carries an emitter naming what produced it; an `audr.Client` stamps one
+onto every record it delivers. The [Python SDK README](adapters/core/python/README.md)
+covers the client, batching and sinks.
 
 ## Status
 
-| Version | Status |
-| --- | --- |
-| [1.0.0](spec/v1.0.0/SPEC.md) | Current. |
+The current specification version is [1.0.0](spec/SPEC.md).
 
 ## Governance
 

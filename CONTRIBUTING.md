@@ -3,10 +3,6 @@
 AUDR is an open specification. This document describes how a change to it is
 proposed, reviewed, and accepted.
 
-Contributors are asked to review the existing specification and the open issues
-before opening a new issue or pull request, to keep communication relevant and
-concise, and to be able to answer questions about anything they submit.
-
 ## Reporting an issue
 
 Use one of two channels:
@@ -48,10 +44,29 @@ without review.
 A draft pull request may accompany the issue to illustrate a proposal, but it
 does not substitute for one.
 
-### Adapters and implementations
+### SDKs, sinks and adapters
 
-An adapter for a harness, router, or gateway is maintained in its own
-repository, not this one. Open an issue describing it and it will be linked.
+The reference implementations live in this repository under `adapters/<name>/<language>/`
+(things that produce records — the core SDK and runtime adapters such as NeMo Relay) and
+`sinks/<name>/<language>/` (things that consume records, such as Chargebee). A sink is a
+destination for records; an adapter turns an agent runtime's own events into records. See
+[`adapters/README.md`](adapters/README.md) and [`sinks/README.md`](sinks/README.md).
+
+A new package is named `audr-<kind>-<target>` (for example `audr-sink-chargebee`,
+`audr-adapter-nemo-relay`), kind before target, so tooling, CODEOWNERS, and alphabetical
+listings can group every sink together and every adapter together. The import package is
+the distribution name with hyphens replaced by underscores. The core itself is the one
+exception: `audr`, not `audr-adapter-core`.
+
+Each package directory is a standalone project with its own toolchain, tests, and release
+cadence — there is no repository-wide workspace. Run `make -C <dir> verify` (or `make -C
+<dir> lint test`, per that package's `Makefile`) before opening a pull request, and `make
+models` in `adapters/core/python` after any change to the published schema, to keep the
+generated record model in sync.
+
+Open an issue before starting a new sink or adapter, so the record shape and the runtime
+hook can be agreed before code is written. An implementation maintained elsewhere is
+welcome too — open an issue and it will be linked.
 
 ## Published versions
 
@@ -69,12 +84,12 @@ published artefacts in place.
 - Address one concern per pull request.
 - Describe the problem being solved, not only the change being made.
 - Reference the issue the pull request resolves, where one exists.
-- Where the change affects [`audr.schema.json`](spec/v1.0.0/audr.schema.json),
+- Where the change affects [`audr.schema.json`](spec/audr.schema.json),
   state which records become valid, or invalid, that were not before.
 
-[`SPEC.md`](spec/v1.0.0/SPEC.md) is a generated document: the field tables are
+[`SPEC.md`](spec/SPEC.md) is a generated document: the field tables are
 derived from the schema. Propose a change to a field's type, requirement level,
-or description in [`audr.schema.json`](spec/v1.0.0/audr.schema.json) rather than
+or description in [`audr.schema.json`](spec/audr.schema.json) rather than
 in the rendered specification.
 
 ## Licensing

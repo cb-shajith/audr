@@ -2,9 +2,9 @@
 
 ## Scope
 
-AUDR is a specification, a JSON Schema, and the tooling that renders them. The
-realistic security concerns are narrow, and worth stating precisely so reports
-go to the right place.
+AUDR is a specification, a JSON Schema, the tooling that renders them, and the
+reference packages under `adapters/` and `sinks/`. The realistic security concerns
+are narrow, and worth stating precisely so reports go to the right place.
 
 **In scope for this repository:**
 
@@ -14,17 +14,21 @@ go to the right place.
   validator raise on a record rather than reject it cleanly.
 - Guidance in the specification that leads implementers to store credentials or
   personal data in a record.
+- A vulnerability in a package maintained here — the `audr` core SDK, a runtime
+  adapter under `adapters/`, or a sink under `sinks/`. Mishandled credentials, or
+  record field values reaching a log or an exception, belong here.
 - A supply-chain issue in the build or CI tooling.
 
-**Not in scope here:** vulnerabilities in a product that implements AUDR. Report
-those to that product's vendor. If you believe the specification *caused* the
+**Not in scope here:** vulnerabilities in a third-party product that implements
+AUDR. Report those to that product's vendor. If you believe the specification *caused* the
 vulnerability, that is in scope and we want to hear it.
 
 ## Reporting
 
 Report privately through
 [GitHub's private vulnerability reporting](https://github.com/openaudr/audr/security/advisories/new).
-Do not open a public issue for a suspected vulnerability.
+If that page is unavailable to you, email <security@chargebee.com> instead. Do not
+open a public issue for a suspected vulnerability.
 
 We will acknowledge within three business days and give an assessment within ten.
 If we disagree that a report is a vulnerability we will say so and explain why,
@@ -48,3 +52,8 @@ These are not suggestions:
 - **Records carry no prompt or completion content.** AUDR meters operations; it
   does not record what was said. There is no field for conversation content, and
   an `x_*` extension is not a licence to add one.
+- **A sink forwards the whole record.** A sink's job is delivery, so it sends
+  every field it is given — including `attribution.labels` and any `x_*`
+  extension — to whatever destination it serves, often a third party outside your
+  trust boundary. Nothing downstream re-checks the rules above. Whatever a record
+  must not carry, it must not carry at the point it is built.

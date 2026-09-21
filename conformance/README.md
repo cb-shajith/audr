@@ -14,10 +14,9 @@ fixtures/invalid/     records a conformant validator MUST reject
 runner/python/run.py  reference runner
 ```
 
-Every fixture is plain JSON. `cases.json` is plain JSON. Nothing here is
-Python-specific — a runner in any language reads the manifest, validates each
-file against `spec/audr.schema.json`, and compares the outcome to
-`expect`.
+Every fixture is plain JSON, and so is `cases.json`. A runner in any language
+reads the manifest, validates each file against `spec/audr.schema.json`, and
+compares the outcome to `expect`.
 
 ## Running the suite
 
@@ -26,11 +25,8 @@ pip install -r requirements.txt
 python3 conformance/runner/python/run.py      # -v to list every case
 ```
 
-Expected output:
-
-```
-  38 conformance cases passed (15 valid, 23 invalid)
-```
+The runner prints a one-line summary of the cases it ran, and exits non-zero
+naming every case whose outcome disagreed with the manifest.
 
 ## What the fixtures cover
 
@@ -60,7 +56,7 @@ carry an RFC 3339 `pattern` alongside `format: date-time`, so the constraint
 holds on every validator regardless of configuration. The reference runner also
 enables format assertion explicitly.
 
-## What these fixtures do not cover
+## Requirements enforced outside the schema
 
 Several AUDR requirements cannot be expressed in JSON Schema at all. They are
 enforced by the sink, and are listed in section 3.3 of the specification. A
