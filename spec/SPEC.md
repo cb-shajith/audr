@@ -6,6 +6,8 @@
 
 A JSON record format for agent cost monitoring and monetization.
 
+<a id="attribution-document"></a>
+
 ## Attribution
 
 This document is a technical specification of the Agent Usage Detail Record
@@ -15,6 +17,8 @@ are derived from the AUDR schema.
 The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**,
 **RECOMMENDED**, **MAY**, and **OPTIONAL** indicate requirement levels as
 described by [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119).
+
+<a id="introduction"></a>
 
 ## 1. Introduction
 
@@ -53,7 +57,6 @@ stored records and is out of scope for this specification.
 
 - Rated customer amounts, invoice generation, and revenue recognition.
 - Sink operational policies such as orphan wait duration and merge timing.
-- Provider registry contents beyond the `resource.provider` slug convention.
 - Agent internal state records and observability event formats.
 
 ### 1.4 Record Processing Model
@@ -71,6 +74,8 @@ asserted `cost` object according to its own billing configuration.
 **Schema dialect**: `https://json-schema.org/draft/2020-12/schema`
 
 **Version pattern**: `^1\.0\.\d+$`
+
+<a id="definitions"></a>
 
 ## 2. Definitions
 
@@ -111,7 +116,11 @@ validating and storing records, not for calculating a billable amount.
 of these capabilities is a tool invocation. Examples include web search, code
 execution, file access, retrieval, database queries, and API calls.
 
+<a id="specification"></a>
+
 ## 3 Specification
+
+<a id="format"></a>
 
 ## 3.1 Format
 
@@ -119,10 +128,14 @@ An AUDR record is represented as a JSON object. Property names are
 case-sensitive. Objects use fixed fields unless a patterned `x_*` extension is
 explicitly defined. All other additional properties are invalid.
 
+<a id="conformance"></a>
+
 ## 3.2 Conformance
 
 A conformant record MUST contain all top-level required properties and MUST
 satisfy the cross-field operation constraints in [section 3.13](#313-cross-field-operation-constraints).
+
+<a id="validation-boundaries"></a>
 
 ## 3.3 Validation Boundaries
 
@@ -138,6 +151,8 @@ are responsible for the following requirements:
   `cost.total_cost`.
 - A merge key MUST identify one metered operation.
 - A correction MUST use the same `emitter.component` as the corrected record.
+
+<a id="audr-record"></a>
 
 ## 3.4 AUDR Record Object
 
@@ -199,6 +214,8 @@ This is the root document object for the AUDR specification.
 | `usage` | Usage Object | Required | Raw, non-monetary counters with exactly one non-empty llm or tool block selected by resource.operation. An absent counter means unreported or inapplicable; zero means measured as zero and MUST NOT be inferred from absence. |
 | `cost` | Cost Object | Optional | Provider- or router-asserted cost that rating MAY use or ignore according to its billing configuration. Components are gross, total_cost is net, and the single cost sub-block must match usage; rating MAY check consistency but MUST NOT overwrite the total. |
 
+<a id="identity"></a>
+
 ## 3.5 Record Identity
 
 The REQUIRED `spec_version` and `record_id` properties declare schema version
@@ -219,6 +236,8 @@ record fully restated by a correction.
 | `record_id` | string (8–64 chars) | Required | ULID or UUIDv7 idempotency key, unique to each emitted record rather than each logical event. Records from different components use distinct IDs and are merged, not deduplicated. |
 | `corrects` | string (8–64 chars) | Optional | Identifies one earlier record fully restated by this correction. The correction MUST contain full state, use a fresh record_id, and come from the same emitter.component; all-zero usage represents a void. |
 
+<a id="emitter"></a>
+
 ## 3.6 `emitter` Object
 
 The REQUIRED `emitter` object identifies the software component that wrote the
@@ -238,6 +257,8 @@ record.
 | `emitter.name` | string (min 1 chars) | Required | Package identifier for the emitter. |
 | `emitter.version` | string (min 1 chars) | Required | Emitter release used to attribute data-quality issues. |
 
+<a id="timing"></a>
+
 ## 3.7 `timing` Object
 
 The REQUIRED `timing` object records event completion and optional ingest and
@@ -256,6 +277,8 @@ duration observations.
 | `timing.event_time` | string (pattern) | Required | Event invocation time in [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339) format with millisecond precision; for streams, use stream termination. |
 | `timing.received_time` | string (pattern) | Optional | Ingest time in [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339) format with millisecond precision. Set by the sink. |
 | `timing.duration_ms` | integer ≥ 0 | Optional | Event execution duration in milliseconds. |
+
+<a id="resource"></a>
 
 ## 3.8 `resource` Object
 
@@ -287,6 +310,8 @@ operation performed.
 | `resource.key_name` | string | Optional | Credential label from the gateway registry. It MUST contain no key material, prefix, hash, or other secret substring. |
 | `resource.region` | string | Optional | Region affecting price and data residency. |
 | `resource.deployment` | string (min 1 chars) | Optional | Open-vocabulary deployment platform or environment, such as AWS, GCP, Azure, or self-hosted. |
+
+<a id="run"></a>
 
 ## 3.9 `run` Object
 
@@ -321,6 +346,8 @@ hierarchy.
 | `run.error_reason` | string (max 32 chars) | Optional | Human-readable message of the run failure, limited to 32 characters. |
 | `run.outcome` | enum (`resolved`, `escalated`, `abandoned`, `failed`) | Optional | The agent run's final outcome, emitted only by the harness. |
 
+<a id="attribution"></a>
+
 ## 3.10 `attribution` Object
 
 The REQUIRED business `attribution` object carries environment, user, account,
@@ -349,6 +376,8 @@ subscription, and label dimensions.
 | `attribution.account_id` | string (min 1 chars) | Conditional | The account that pays the bill. Rating may aggregate usage by this account. Required for production traffic; optional otherwise. |
 | `attribution.subscription_id` | string | Optional | Subscription associated with the paying account for this usage record. |
 | `attribution.labels` | object (≤ 20 key-value pairs) | Optional | Up to 20 free-form dimensions for non-billable metadata. Labels MUST NOT contain PII. |
+
+<a id="usage"></a>
 
 ## 3.11 `usage` Object
 
@@ -397,6 +426,8 @@ tool execution and retrieval.
 | `usage.tool.sandbox_time` | number ≥ 0 | Optional | Sandbox compute wall-clock time in milliseconds, distinct from whole-operation timing.duration_ms. Used when an agent run spins up a sandbox for tool execution. |
 | `usage.tool.x_*` | integer \| number | Optional | Non-negative implementation counter named x_&lt;name&gt;. |
 
+<a id="cost"></a>
+
 ## 3.12 `cost` Object
 
 The OPTIONAL `cost` object records an asserted event cost. When present, it MUST
@@ -444,6 +475,8 @@ assertion according to its own billing configuration.
 | `cost.tool.call_cost` | number ≥ 0 | Optional | Per-invocation charge corresponding to usage.tool.call_count. |
 | `cost.tool.sandbox_cost` | number ≥ 0 | Optional | Charge corresponding to usage.tool.sandbox_time. |
 | `cost.tool.x_*` | number ≥ 0 | Optional | Charge amount for an implementation-specific field named x_&lt;name&gt;. |
+
+<a id="cross-field"></a>
 
 ## 3.13 Cross-Field Operation Constraints
 

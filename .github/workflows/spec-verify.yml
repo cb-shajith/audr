@@ -1,0 +1,54 @@
+name: Verify specification
+
+# The specification, its generator, and the shared conformance fixtures.
+on:
+  pull_request:
+    paths: ['spec/**', 'tools/**', 'conformance/**', 'Makefile', 'requirements.txt', '.github/workflows/spec-verify.yml']
+  push:
+    branches: [dev, main]
+    paths: ['spec/**', 'tools/**', 'conformance/**', 'Makefile', 'requirements.txt', '.github/workflows/spec-verify.yml']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spec-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  spec:
+    name: Specification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Each step below exists because the corresponding class of defect was
+      # found in the v1.0.0 draft before release.
+
+      - name: Schema is a valid Draft 2020-12 schema
+        run: make schema
+
+      - name: Specification examples validate against the schema
+        run: make examples
+
+      - name: Conformance fixtures produce their expected outcomes
+        run: make conformance
+
+      - name: $id cross-references resolve
+        run: make lint
+
+      - name: Generated files are not stale
+        run: make fresh
+

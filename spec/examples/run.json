@@ -1,0 +1,8 @@
+{
+  "run_id": "01K4N8B0M2C5F7H9J1L3N6P8QR",
+  "name": "Resolve Acme support request",
+  "span_id": "tool-call-2",
+  "parent_span_id": "model-call-1",
+  "step": 2,
+  "run_type": "agent_run"
+}

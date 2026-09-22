@@ -1,0 +1,14 @@
+{
+  "resource": {
+    "provider": "self-hosted",
+    "type": "tool",
+    "name": "search_tickets",
+    "operation": "retrieval"
+  },
+  "usage": {
+    "tool": {
+      "type": "retrieval",
+      "call_count": 1
+    }
+  }
+}

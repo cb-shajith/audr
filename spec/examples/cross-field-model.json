@@ -1,0 +1,14 @@
+{
+  "resource": {
+    "provider": "anthropic",
+    "type": "model",
+    "name": "claude-sonnet-4-20250514",
+    "operation": "generation",
+    "modality": "text"
+  },
+  "usage": {
+    "llm": {
+      "requests": 1
+    }
+  }
+}

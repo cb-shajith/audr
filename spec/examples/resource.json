@@ -1,0 +1,8 @@
+{
+  "provider": "anthropic",
+  "type": "model",
+  "name": "claude-sonnet-4-20250514",
+  "operation": "generation",
+  "region": "us-east-1",
+  "deployment": "AWS"
+}

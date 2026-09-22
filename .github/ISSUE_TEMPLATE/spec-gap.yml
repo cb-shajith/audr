@@ -1,0 +1,53 @@
+name: Spec gap — it breaks for my cost model
+description: A usage or cost model AUDR cannot express
+labels: ["spec-gap"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the most useful issue you can open. Tell us specifically where
+        it breaks — a real provider, a real cost model, a real query you cannot
+        answer.
+  - type: textarea
+    id: operation
+    attributes:
+      label: What are you trying to meter?
+      description: The operation, the provider, and what it charges for.
+      placeholder: |
+        A provider-hosted browser tool billed per page fetched and per
+        megabyte transferred.
+    validations:
+      required: true
+  - type: textarea
+    id: attempt
+    attributes:
+      label: What did you try to put in a record?
+      description: Paste the record you wanted to emit, even if it is invalid.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: breaks
+    attributes:
+      label: What went wrong?
+      description: >
+        Which field was missing, which constraint rejected it, or what became
+        ambiguous. If you worked around it, say how — the workaround tells us
+        how bad the gap is.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What prevents labels or x_* extensions from covering it?
+      description: >
+        `attribution.labels` and `x_*` counters absorb most extension needs.
+        Usually they are insufficient because a sink has to understand the value,
+        or because it must aggregate across independently deployed emitters.
+  - type: input
+    id: version
+    attributes:
+      label: Spec version
+      placeholder: "1.0.0"
+    validations:
+      required: true

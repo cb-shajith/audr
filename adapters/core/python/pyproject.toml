@@ -1,0 +1,90 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "audr"
+dynamic = ["version"]
+description = "Vendor-neutral SDK for emitting AUDR (Agent Usage Detail Record) v1.0.0 records."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.11"
+dependencies = ["pydantic>=2.7,<3", "uuid6>=2024.1"]
+authors = [
+  { name = "The AUDR contributors", email = "audr@chargebee.com" },
+]
+keywords = ["audr", "agent", "usage", "metering", "billing", "sdk"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Framework :: AsyncIO",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13", "Programming Language :: Python :: 3.14",
+  "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://openaudr.dev"
+Issues = "https://github.com/openaudr/audr/issues"
+Source = "https://github.com/openaudr/audr/tree/main/adapters/core/python"
+Specification = "https://openaudr.dev/spec/v1.0.0/"
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "pytest-asyncio>=0.24",
+  "pytest-cov>=5",
+  "ruff>=0.8",
+  "mypy>=1.13",
+  # Pinned exactly: the generator's output is committed, so a float here would show up as a
+  # spurious `make models-check` failure rather than as a dependency bump.
+  "datamodel-code-generator==0.82.0",
+  "jsonschema>=4.23",
+  "types-jsonschema>=4.26",
+]
+
+[tool.hatch.version]
+path = "src/audr/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/audr"]
+
+[tool.hatch.build.targets.sdist]
+# The sdist carries what is needed to build and to read the package, not the
+# development tree: tests reach outside the package root and cannot run from it.
+only-include = ["src", "README.md", "CHANGELOG.md", "LICENSE", "NOTICE"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["src/audr/record/_schema.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "RUF"]
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["src", "scripts", "tests"]
+python_version = "3.11"
+# `tests` has no `__init__.py`, so the base directories are named rather than guessed;
+# without this `tests/helpers.py` resolves as both `helpers` and `tests.helpers`.
+explicit_package_bases = true
+mypy_path = "src:."
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+# `tests` is an implicit namespace package so test modules can share `tests/helpers.py`.
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["audr"]
+omit = ["src/audr/record/_schema.py"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true

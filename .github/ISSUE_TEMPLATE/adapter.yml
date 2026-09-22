@@ -1,0 +1,41 @@
+name: Adapter or sink report
+description: Tell us about an adapter or sink you have written, or one you need
+labels: ["adapter"]
+body:
+  - type: input
+    id: target
+    attributes:
+      label: Harness, router, provider or destination
+      placeholder: "LiteLLM"
+    validations:
+      required: true
+  - type: dropdown
+    id: status
+    attributes:
+      label: Status
+      options:
+        - I have written one
+        - I am writing one
+        - I need one
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Link
+      description: If it exists, where is it?
+  - type: textarea
+    id: conformance
+    attributes:
+      label: Conformance
+      description: >
+        Does it pass every fixture in `conformance/`? If not, which cases fail
+        and why? A case that fails for a good reason is a specification bug, not
+        an adapter bug — we want to know.
+  - type: textarea
+    id: friction
+    attributes:
+      label: What was awkward?
+      description: >
+        Anything the specification made harder than it needed to be. This is the
+        part we most want to read.

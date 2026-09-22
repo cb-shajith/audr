@@ -4,3 +4,24 @@ __pycache__/
 venv/
 .pytest_cache/
 .DS_Store
+
+# node
+node_modules/
+
+# python packaging
+*.egg-info/
+build/
+.mypy_cache/
+.ruff_cache/
+.coverage
+
+# secrets and local environment
+.env
+.env.*
+.envrc
+
+# editors
+.idea/
+.vscode/
+*.swp
+
