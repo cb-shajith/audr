@@ -1,5 +1,6 @@
 .PHONY: help spec check schema examples conformance lint fresh links versions install clean all
-.PHONY: python core-python adapter-nemo-relay-python sink-chargebee-python
+.PHONY: python core-python adapter-litellm-python adapter-nemo-relay-python
+.PHONY: sink-chargebee-python
 
 PYTHON ?= python3
 
@@ -42,13 +43,16 @@ versions: ## Fail if a distribution version is written into any Markdown file
 core-python: ## Verify the core Python SDK (adapters/core/python)
 	@$(MAKE) -C adapters/core/python verify
 
+adapter-litellm-python: ## Lint and test the LiteLLM Python adapter
+	@$(MAKE) -C adapters/litellm/python lint test
+
 adapter-nemo-relay-python: ## Lint and test the NeMo Relay Python adapter
 	@$(MAKE) -C adapters/nemo-relay/python lint test
 
 sink-chargebee-python: ## Lint and test the Chargebee Python sink
 	@$(MAKE) -C sinks/chargebee/python lint test
 
-python: core-python adapter-nemo-relay-python sink-chargebee-python ## Verify every Python package
+python: core-python adapter-litellm-python adapter-nemo-relay-python sink-chargebee-python ## Verify every Python package
 
 all: check python ## Everything CI runs, across the repository
 

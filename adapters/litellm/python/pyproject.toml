@@ -1,0 +1,94 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "audr-adapter-litellm"
+dynamic = ["version"]
+description = "LiteLLM usage adapter for AUDR (experimental)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [
+  { name = "The AUDR contributors", email = "audr@chargebee.com" },
+]
+keywords = ["audr", "litellm", "llm", "agent", "adapter", "metering"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Framework :: AsyncIO",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Typing :: Typed",
+]
+dependencies = [
+  "audr>=0.1.0a1,<0.2",
+  "pydantic>=2.10,<3",
+]
+
+[project.optional-dependencies]
+runtime = [
+  "litellm>=1.101,<1.102",
+]
+
+[project.urls]
+Homepage = "https://openaudr.dev"
+Issues = "https://github.com/openaudr/audr/issues"
+Source = "https://github.com/openaudr/audr/tree/main/adapters/litellm/python"
+
+[tool.uv.sources]
+audr = { path = "../../core/python", editable = true }
+
+[dependency-groups]
+dev = [
+  "mypy>=1.13",
+  "pytest>=8",
+  "pytest-asyncio>=0.24",
+  "pytest-cov>=5",
+  "ruff>=0.8",
+]
+
+[tool.hatch.version]
+path = "src/audr_adapter_litellm/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/audr_adapter_litellm"]
+
+[tool.hatch.build.targets.sdist]
+only-include = ["src", "README.md", "CHANGELOG.md", "LICENSE", "NOTICE"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "RUF"]
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["src", "tests", "scripts"]
+python_version = "3.11"
+explicit_package_bases = true
+mypy_path = "src:."
+
+[[tool.mypy.overrides]]
+module = ["litellm", "litellm.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["audr_adapter_litellm"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
