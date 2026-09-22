@@ -2,6 +2,7 @@
 
 [![Spec](https://github.com/openaudr/audr/actions/workflows/spec-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/spec-verify.yml)
 [![Core SDK](https://github.com/openaudr/audr/actions/workflows/adapter-core-python-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/adapter-core-python-verify.yml)
+[![LiteLLM adapter](https://github.com/openaudr/audr/actions/workflows/adapter-litellm-python-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/adapter-litellm-python-verify.yml)
 [![NeMo Relay adapter](https://github.com/openaudr/audr/actions/workflows/adapter-nemo-relay-python-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/adapter-nemo-relay-python-verify.yml)
 [![Chargebee sink](https://github.com/openaudr/audr/actions/workflows/sink-chargebee-python-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/sink-chargebee-python-verify.yml)
 [![Docs](https://github.com/openaudr/audr/actions/workflows/docs-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/docs-verify.yml)
@@ -119,8 +120,21 @@ asyncio.run(main())
 | Part | Reference implementation | Guide |
 | --- | --- | --- |
 | Core SDK | [`audr`](adapters/core/python/README.md) | [`adapters/core/README.md`](adapters/core/README.md) — the `Client`, the sink contract, delivery states |
-| Adapters | [`audr-adapter-nemo-relay`](adapters/nemo-relay/python/README.md) | [`adapters/README.md`](adapters/README.md) |
+| Adapters | [`audr-adapter-litellm`](adapters/litellm/python/README.md), [`audr-adapter-nemo-relay`](adapters/nemo-relay/python/README.md) | [`adapters/README.md`](adapters/README.md) |
 | Sinks | [`audr-sink-chargebee`](sinks/chargebee/python/README.md) | [`sinks/README.md`](sinks/README.md) |
+
+## Integrations
+
+Runtime adapters turn framework and router events into records for the same client:
+
+```bash
+pip install "audr-adapter-litellm[runtime]"
+pip install "audr-adapter-nemo-relay[runtime]"
+```
+
+See the [LiteLLM adapter](adapters/litellm/python/README.md) for SDK and Router model
+usage, and the [NeMo Relay adapter](adapters/nemo-relay/python/README.md) for Relay LLM
+and tool scopes.
 
 ## Status
 

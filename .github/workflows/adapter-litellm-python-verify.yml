@@ -1,0 +1,80 @@
+name: Verify LiteLLM adapter (Python)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "adapters/litellm/python/**"
+      - "adapters/core/python/**"
+      - ".github/workflows/adapter-litellm-python-verify.yml"
+  pull_request:
+    paths:
+      - "adapters/litellm/python/**"
+      - "adapters/core/python/**"
+      - ".github/workflows/adapter-litellm-python-verify.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: adapter-litellm-python-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: adapters/litellm/python
+
+jobs:
+  test:
+    name: Python ${{ matrix.python }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v6
+        with:
+          python-version: "${{ matrix.python }}"
+
+      - name: Install
+        run: make install
+
+      - name: Lint
+        run: make lint
+
+      - name: Tests
+        run: make test
+
+  package:
+    name: Build and verify wheel
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@e92bafb6253dcd438e0484186d7669ea7a8ca1cc # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: make install
+
+      - name: Build and verify
+        run: make isolation
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: audr-adapter-litellm-dist
+          path: adapters/litellm/python/dist/
