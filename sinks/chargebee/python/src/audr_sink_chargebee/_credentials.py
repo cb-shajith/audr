@@ -117,9 +117,9 @@ def resolve_credentials(
     """Resolve credentials once, prioritizing explicit values over environment values.
 
     The primary configuration mirrors the official Chargebee SDK: `site` (plus
-    `ingest_domain`) and `api_key`. `ingest_url` remains as an escape hatch
-    for hosts other than the default ingest domain; it is mutually exclusive
-    with `site`/`ingest_domain`.
+    `ingest_domain`) and `api_key`. `ingest_url` sets the full origin directly
+    for hosts other than a `{site}` subdomain of the ingest domain; it is
+    mutually exclusive with `site`/`ingest_domain`.
     """
     resolved_api_key = api_key if api_key is not None else os.environ.get("CHARGEBEE_API_KEY")
     if resolved_api_key is None:

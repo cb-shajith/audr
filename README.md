@@ -47,10 +47,10 @@ attribution that the records join.
 | Path | Contains |
 | --- | --- |
 | [`spec/`](spec/SPEC.md) | The standard: [`SPEC.md`](spec/SPEC.md) to implement it, [`audr.schema.json`](spec/audr.schema.json) to validate records, [`examples/record.json`](spec/examples/record.json) for a complete record |
-| [`conformance/`](conformance/README.md) | Language-neutral fixtures every implementation should reproduce |
+| [`conformance/`](conformance/README.md) | Language-neutral fixtures every implementation must reproduce |
 | [`adapters/`](adapters/README.md) | Things that produce records — the [Python SDK](adapters/core/python/README.md) and runtime adapters |
 | [`sinks/`](sinks/README.md) | Things that consume records — destinations such as Chargebee |
-| `tools/` | The specification generator, driven by the [`Makefile`](Makefile) |
+| `tools/` | The specification generator and the repository checks, driven by the [`Makefile`](Makefile) |
 
 The schema's canonical URL is its `$id`:
 
@@ -62,7 +62,7 @@ Any JSON Schema Draft 2020-12 validator checks a record against it. In this
 repository, `make examples` validates every example in the specification.
 
 ```bash
-make check     # schema, examples, conformance fixtures, cross-references, staleness
+make check     # schema, examples, conformance, cross-references, staleness, links, versions
 make spec      # regenerate spec/SPEC.md from the schema, the outline and the prose
 ```
 
@@ -79,18 +79,38 @@ pip install audr audr-sink-chargebee
 
 ```python
 import asyncio
+
 import audr
 from audr_sink_chargebee import ChargebeeSink
 
+# The record shown above, built with the SDK. record_id, spec_version and
+# timing.event_time are defaulted; Chargebee additionally routes on subscription_id.
+record = audr.AUDR(
+    timing=audr.Timing(),
+    resource=audr.Resource(
+        provider="anthropic",
+        type="model",
+        name="claude-sonnet-4-20250514",
+        operation="generation",
+        modality="text",
+    ),
+    run=audr.Run(run_id="01K4N8B0M2C5F7H9J1L3N6P8QR", span_id="model-call-1"),
+    attribution=audr.Attribution(
+        environment="production", account_id="account-42", subscription_id="sub-42"
+    ),
+    usage=audr.Usage(llm=audr.LlmUsage(input_tokens=1200, output_tokens=300)),
+)
+
 
 async def main() -> None:
-    sink = ChargebeeSink(site="acme", api_key="cb_live_...")   # any Sink: a file, a queue, Chargebee
+    sink = ChargebeeSink(site="acme", api_key="cb_live_...")  # any Sink: a file, a queue, Chargebee
     async with audr.Client(
         sink,
-        emitter=audr.Emitter(component="harness", name="my-harness", version="1.4.0"),
+        emitter=audr.Emitter(component="router", name="openrouter", version="1.12.1"),
     ) as client:
-        record = audr.AUDR(...)   # full construction: adapters/core/python/README.md
-        client.record(record)                 # an adapter makes this call on your behalf
+        result = client.record(record)  # an adapter makes this call on your behalf
+        assert result.queued, result.issues
+    print(client.stats)
 
 
 asyncio.run(main())

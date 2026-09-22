@@ -1,35 +1,33 @@
 # AGENTS.md — adapters
 
-Directives for work anywhere under `adapters/`. A package's own `AGENTS.md` takes precedence
-inside that package. Repository-wide directives are in the root [`AGENTS.md`](../AGENTS.md);
-contribution process is in [`CONTRIBUTING.md`](CONTRIBUTING.md) and the top-level
-[`CONTRIBUTING.md`](../CONTRIBUTING.md).
+Guidance for work under `adapters/`. A package's own `AGENTS.md` takes precedence inside
+that package; repository-wide rules are in the root [`AGENTS.md`](../AGENTS.md).
+[`CONTRIBUTING.md`](CONTRIBUTING.md) explains what an adapter is and what a new one ships.
+This file summarises the rules to observe and the steps to follow.
 
-## Invariants
+## Rules
 
-1. An adapter never talks to a destination. It hands records to `client.record()` and
-   nothing else.
-2. An adapter never creates a `Client` or a sink. The host application owns both.
-3. An adapter reads no prompts, completions, tool arguments or tool results, and no record
-   field value reaches a log or an exception.
-4. `record_id` is minted by the SDK. Runtime identifiers go on `run.run_id` and
+1. Hand records to `client.record()` only. An adapter never communicates with a
+   destination.
+2. Do not create a `Client` or a sink. The host application owns both.
+3. Do not read prompts, completions, tool arguments or tool results. If a record cannot be
+   attributed, skip it with a value-free warning rather than billing it to a guess.
+4. The SDK mints `record_id`. Place the runtime's own identifiers on `run.run_id` and
    `run.span_id`.
-5. The runtime is an optional extra, imported at activation, never at package import.
-6. `make verify` passes in the package before the change is done.
+5. Make the runtime an optional extra and import it at activation, never at package import.
 
 ## Creating a new adapter
 
-Follow this brief when asked to add an adapter for a runtime. Confirm an accepted issue
-exists first; if none does, stop and say so.
+Follow these steps when adding an adapter for a runtime. Confirm first that an accepted
+issue agrees the runtime hook and the record shape; if none exists, stop and report it.
 
 1. **Read** [`CONTRIBUTING.md`](CONTRIBUTING.md) in full, then
    [`core/README.md`](core/README.md) for how records flow, then the NeMo Relay adapter
    (`nemo-relay/python/`) as the reference implementation.
-2. **Create** `adapters/<target>/python/` by copying the shape of `nemo-relay/python/`:
-   `pyproject.toml` (name `audr-adapter-<target>`, `requires-python = ">=3.11"`, the
-   runtime as an extra, shared Ruff/mypy/pytest configuration, `fail_under = 90`),
-   `Makefile`, `src/audr_adapter_<target>/{__init__.py,_version.py,py.typed}`, `tests/`,
-   `README.md`, `AGENTS.md`, `CHANGELOG.md`, `LICENSE`, `NOTICE`.
+2. **Create** `adapters/<target>/python/` by copying the shape of `nemo-relay/python/`.
+   `CONTRIBUTING.md` lists every file the package ships. In `pyproject.toml`: name
+   `audr-adapter-<target>`, `requires-python = ">=3.11"`, the runtime as an extra, the
+   shared Ruff/mypy/pytest configuration, `fail_under = 90`.
 3. **Implement** in this order, with tests alongside each: the runtime hook and lifecycle;
    attribution resolution with configurable defaults; event-to-record mapping; the
    cross-thread handoff and `drain()` if the runtime uses worker threads.

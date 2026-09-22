@@ -11,8 +11,8 @@ Delivers AUDR usage records to a site's usage-ingest batch endpoint.
 Credentials come from ``CHARGEBEE_SITE`` and ``CHARGEBEE_API_KEY`` unless
 passed explicitly as ``site``/``api_key``. The ingest domain defaults to
 ``ingest.chargebee.com``; override it with ``CHARGEBEE_INGEST_DOMAIN`` (or
-``ingest_domain=``). ``ingest_url`` (or ``CHARGEBEE_INGEST_URL``) remains as
-an escape hatch for setting the full origin directly. Credentials belong to
+``ingest_domain=``). ``ingest_url`` (or ``CHARGEBEE_INGEST_URL``) sets the full
+origin directly for any other host. Credentials belong to
 the sink, never to the core client.
 """
 

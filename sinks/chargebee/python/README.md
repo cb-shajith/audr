@@ -37,19 +37,18 @@ Every record requires an emitter. Pass `emitter=` to the `Client` as above and i
 stamped onto any record that arrives without one; a record that reaches validation
 with no emitter is rejected with a `/emitter` issue and never sent.
 
-The primary configuration is `site` and `api_key`. Each may be passed
-explicitly or read from `CHARGEBEE_SITE` and `CHARGEBEE_API_KEY`; explicit
-values take precedence over the environment, and `api_key` is always required. `site` is
-combined with the ingest domain into
-`https://{site}.{ingest_domain}/api/v2/batch/usage_events`, where the domain
-defaults to `ingest.chargebee.com` (the official Chargebee batch ingest
-domain; the endpoint URL does not vary by site geography). Override the domain with
-`CHARGEBEE_INGEST_DOMAIN` or `ingest_domain=` (for example, a test
-environment). For hosts other than a `{site}` subdomain of the ingest
-domain, `ingest_url=` (or `CHARGEBEE_INGEST_URL`) is a direct override
-that sets the full origin; it is mutually exclusive with
-`site`/`ingest_domain`. Credentials belong to the sink and never appear in
-logs, errors, or `repr()`.
+Configure the sink with `site` and `api_key`. Pass them explicitly or set `CHARGEBEE_SITE`
+and `CHARGEBEE_API_KEY`; explicit values take precedence, and `api_key` is always required.
+Credentials belong to the sink and never appear in logs, errors, or `repr()`.
+
+The sink sends each batch to `https://{site}.{ingest_domain}/api/v2/batch/usage_events`.
+
+- `ingest_domain` defaults to `ingest.chargebee.com`, the Chargebee batch ingest domain.
+- Override the domain with `ingest_domain=` or `CHARGEBEE_INGEST_DOMAIN`, for example to
+  target a test environment.
+- For a host that is not a `{site}` subdomain of the ingest domain, set the full origin
+  with `ingest_url=` or `CHARGEBEE_INGEST_URL`. This is mutually exclusive with `site` and
+  `ingest_domain`.
 
 ## Routing and delivery
 
@@ -75,14 +74,17 @@ logs, errors, or `repr()`.
   `deduplication_id`), every non-rejected record in that batch is
   conservatively reported as `unknown` rather than assumed accepted; `record_id`
   makes a replay idempotent.
-- HTTP outcomes map onto `audr.BatchResult`: `202`/`207` responses become
-  `accepted` (with any `rejected`/`unknown` records named individually), `401`
-  fails the batch as `retryable=False, detail="auth"`, `413` fails it as
-  `retryable=False, detail="payload_too_large"`, other `4xx` responses
-  fail as `retryable=False, detail="http_<status>"`, and `429`/`5xx`/network
-  errors fail as `retryable=True` once the retry budget (`RetryPolicy`) is
-  exhausted.
 - `close()` is idempotent.
+
+Each HTTP response becomes one `audr.BatchResult`:
+
+| Response | Outcome | `detail` |
+| --- | --- | --- |
+| `202`, `207` | `ACCEPTED`; `rejected` and `unknown` name individual records | |
+| `401` | `PERMANENT_FAILURE` | `auth` |
+| `413` | `PERMANENT_FAILURE` | `payload_too_large` |
+| other `4xx` | `PERMANENT_FAILURE` | `http_<status>` |
+| `429`, `5xx`, network error | `RETRYABLE_FAILURE`, once `RetryPolicy` is exhausted | |
 
 ## Data handling
 

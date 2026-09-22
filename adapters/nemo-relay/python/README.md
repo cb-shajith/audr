@@ -5,8 +5,8 @@
 > **Status: experimental.** Its public names may change in minor releases until it
 > graduates.
 
-The optional NeMo Relay integration observes completed Relay 0.8 LLM and tool scopes and
-hands attributed records to an existing `audr.Client`. The host application owns the
+This adapter observes completed Relay 0.8 LLM and tool scopes and hands attributed
+records to an existing `audr.Client`. The host application owns the
 client and its sink, including construction, startup and shutdown.
 
 ## Install
@@ -17,8 +17,7 @@ pip install "audr-adapter-nemo-relay[runtime]"
 
 The extra supports `nemo-relay>=0.8,<0.9`. `plugin.validate(...)` reports an unsupported
 release, and activation requires a supported one to be installed. NeMo Relay is imported
-at activation, so importing the core `audr` package or this integration subpackage leaves
-it out of the process.
+at activation, so importing this package leaves it out of the process.
 
 A runnable [NeMo Relay terminal chat example](https://github.com/openaudr/audr/blob/main/adapters/nemo-relay/python/examples/nemo_relay_chat.py) shows
 plugin configuration, scoped attribution, an OpenAI-compatible model call, handoff drain,

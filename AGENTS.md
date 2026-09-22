@@ -1,14 +1,13 @@
 # AGENTS.md
 
-Directives for anyone — coding agent or maintainer — working in this repository. A nearer
-`AGENTS.md` takes precedence for work under its directory; this file covers everything
-else. Contribution process lives in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Guidance for anyone working in this repository, whether a coding agent or a maintainer.
+A nearer `AGENTS.md` takes precedence for work under its directory; this file covers
+everything else. The contribution process is in [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## What this repository is
 
 AUDR is an open standard: one JSON record per metered agent operation, carrying enough
-identity and attribution that records from different systems join. This repository holds
-the specification and its reference packages.
+identity and attribution that records from different systems join.
 
 | Tree | Holds |
 | --- | --- |
@@ -42,6 +41,15 @@ the specification and its reference packages.
 6. No Markdown file states a distribution version. Use a badge.
 7. Do not weaken or skip a lint, type-check or coverage gate to make a change pass.
 
+## Process
+
+- Before changing the specification or adding an adapter or sink, confirm that an accepted
+  issue exists. If none exists, stop and report it.
+  [`CONTRIBUTING.md`](CONTRIBUTING.md#classes-of-change) defines which changes require an
+  issue.
+- Record every user-visible change to a package under `[Unreleased]` in its
+  `CHANGELOG.md`.
+
 ## Verification
 
 ```bash
@@ -57,7 +65,7 @@ done when `make all` passes.
 
 ## Documentation
 
-One fact, one home. A `README.md` is for users; a `CONTRIBUTING.md` is for contributors and
+`README.md` is for users; a `CONTRIBUTING.md` is for contributors and
 exists only at the repository root and in `adapters/` and `sinks/`; an `AGENTS.md` is for
 whoever works inside its tree. A `*/python/README.md` is a PyPI long description and must
 stay self-contained with absolute URLs. The full table of where each fact lives is the

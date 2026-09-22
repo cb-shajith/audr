@@ -1,8 +1,10 @@
 # AGENTS.md
 
-Directives for working inside this package. Tier-wide directives are in
-[`sinks/AGENTS.md`](../../AGENTS.md); repository setup, the shared Python toolchain and
-the contribution process are in the top-level [`CONTRIBUTING.md`](../../../CONTRIBUTING.md).
+Guidance for working in this package. Rules for every sink are in
+[`sinks/AGENTS.md`](../../AGENTS.md). Setup, the shared Python toolchain and the
+contribution process are in the top-level [`CONTRIBUTING.md`](../../../CONTRIBUTING.md).
+To integrate this sink into an application, see [`README.md`](README.md); this file covers
+changes to the package itself.
 
 ## What this is
 
@@ -25,26 +27,21 @@ for Usage-Based Billing. It implements the sink contract defined in
 | `tests/` | The suite, including `test_sink_contract.py` (`assert_sink_contract`) and `test_no_live_network.py` |
 | `tests/integration/test_live_ingestion.py` | Opt-in `live`-marked test against a real site; never runs in CI |
 
-## Working rules
+## Rules
 
-1. Credentials are held by the sink and never appear in logs, errors or `repr()`.
-   `api_key` is always required; explicit arguments take precedence over
-   `CHARGEBEE_SITE`, `CHARGEBEE_API_KEY`, `CHARGEBEE_INGEST_DOMAIN`, `CHARGEBEE_INGEST_URL`.
-2. Chargebee routes on `attribution.subscription_id`. A record without one is returned as
-   `RejectedRecord(record_id, "missing_subscription_id")`, never sent.
-3. `record_id` is Chargebee's `deduplication_id`; `timing.event_time` in milliseconds is
-   `usage_timestamp`. A replay keyed on `record_id` is idempotent.
-4. Every field of the record is flattened and forwarded, including `attribution.labels`
-   and `x_*` extensions. The sink adds nothing, removes nothing, and re-checks nothing;
-   property names are reversible, and the separator is one or more underscores.
-5. HTTP outcomes map onto `BatchResult` as the README documents: `202`/`207` accepted with
-   `rejected`/`unknown` named individually; `401` permanent `auth`; `413` permanent
-   `payload_too_large`; other `4xx` permanent `http_<status>`; `429`/`5xx`/network
-   retryable once the `RetryPolicy` budget is spent. A `207` failure that cannot be matched
-   to a record marks every non-rejected record in the batch `unknown`.
-6. Retries happen inside `deliver()`, bounded by `RetryPolicy`. `deliver()` and `close()`
-   never raise for a delivery failure; `close()` is idempotent.
-7. No record field value reaches a log or an error message.
+1. `api_key` is always required. Explicit arguments take precedence over `CHARGEBEE_SITE`,
+   `CHARGEBEE_API_KEY`, `CHARGEBEE_INGEST_DOMAIN` and `CHARGEBEE_INGEST_URL`. `ingest_url`
+   is mutually exclusive with `site` and `ingest_domain`.
+2. Chargebee routes on `attribution.subscription_id`. Return a record without one as
+   `RejectedRecord(record_id, "missing_subscription_id")`; never send it.
+3. `record_id` is Chargebee's `deduplication_id`, and `timing.event_time` in milliseconds
+   is `usage_timestamp`. A replay keyed on `record_id` is idempotent.
+4. Flatten and forward every field of the record, including `attribution.labels` and
+   `x_*` extensions. Keep property names reversible; the separator is one or more
+   underscores.
+5. A change to the status-to-outcome mapping in `_sink.py` must be reflected in the README
+   table in the same change. When a `207` failure cannot be matched to a record, mark
+   every non-rejected record in the batch `unknown`. Retries are bounded by `RetryPolicy`.
 
 ## Toolchain
 
@@ -54,19 +51,8 @@ package:
 
 - **Runtime deps:** `audr`, `httpx`.
 - **Version:** `src/audr_sink_chargebee/_version.py`.
-- **Tests:** the default run makes no network call; `test_no_live_network.py` enforces it.
-  The `live` marker requires `CHARGEBEE_INGEST_URL`, `CHARGEBEE_API_KEY` and
+- **Tests:** the default run makes no network call and `test_no_live_network.py` enforces
+  it. The `live` marker requires `CHARGEBEE_INGEST_URL`, `CHARGEBEE_API_KEY` and
   `CHARGEBEE_TEST_SUBSCRIPTION_ID` and is run deliberately with `uv run pytest -m live`.
 
 `make verify` is `lint test isolation`.
-
-## What not to do
-
-- Do not add a code path that talks to Chargebee in the default test run.
-- Do not alter, drop or re-validate record content on the way to the destination; the
-  data-handling rules in [`SECURITY.md`](../../../SECURITY.md) are enforced where the
-  record is built.
-- Do not let the pipeline retry: report `RETRYABLE_FAILURE` only after the sink's own
-  budget is exhausted.
-- Do not include a credential, a site name from a real deployment, or a record value in a
-  test fixture, a log line or an exception.

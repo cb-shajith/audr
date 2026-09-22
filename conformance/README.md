@@ -1,8 +1,8 @@
 # AUDR conformance fixtures
 
 Shared, language-neutral test data for anything that emits, validates, or ingests
-AUDR records. If you are writing an implementation — an SDK, a validator, a sink —
-these fixtures are the contract: agree with them and it is conformant.
+AUDR records. An implementation, whether an SDK, a validator or a sink, is conformant
+when it reproduces every expected outcome in this suite.
 
 ## Layout
 
@@ -20,8 +20,10 @@ compares the outcome to `expect`.
 
 ## Running the suite
 
+From the repository root:
+
 ```bash
-pip install -r requirements.txt
+make install                                  # the runner's dependencies
 python3 conformance/runner/python/run.py      # -v to list every case
 ```
 
@@ -39,14 +41,14 @@ naming every case whose outcome disagreed with the manifest.
 | 3.12 | Cost components, currency format, required pairs |
 | 3.13 | Cross-field operation constraints |
 
-Two fixtures look odd until you know why they exist. Both guard against a
-mistake caught during v1.0.0's drafting, and both must keep failing:
+Two fixtures guard the schema's structure rather than a single field rule, and
+both must keep failing:
 
-- `invalid/allof-as-field.json` — if `allOf` is ever nested inside `properties`
-  again, every cross-field constraint silently stops applying and `allOf`
-  becomes an accepted record field. This fixture is the alarm.
-- `invalid/unknown-operation.json` — pins the `resource.operation` enum, so a
-  value that is not a member cannot quietly reappear in an example.
+- `invalid/allof-as-field.json`: if `allOf` is ever nested inside `properties`,
+  every cross-field constraint stops applying and `allOf` becomes an accepted
+  record field. This fixture guards against that regression.
+- `invalid/unknown-operation.json` pins the `resource.operation` enum, so a
+  value outside it cannot appear in an example.
 
 ## Format assertion
 
