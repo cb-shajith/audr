@@ -11,8 +11,16 @@ license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 requires-python = ">=3.11"
 dependencies = ["pydantic>=2.7,<3", "uuid6>=2024.1"]
+authors = [
+  { name = "The AUDR contributors", email = "audr@chargebee.com" },
+]
+keywords = ["audr", "agent", "usage", "metering", "billing", "sdk"]
 classifiers = [
   "Development Status :: 3 - Alpha",
+  "Framework :: AsyncIO",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11", "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13", "Programming Language :: Python :: 3.14",
   "Typing :: Typed",
@@ -20,6 +28,7 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://openaudr.dev"
+Issues = "https://github.com/openaudr/audr/issues"
 Source = "https://github.com/openaudr/audr/tree/main/adapters/core/python"
 Specification = "https://openaudr.dev/spec/v1.0.0/"
 
