@@ -1,6 +1,6 @@
 .PHONY: help spec check schema examples conformance lint fresh links versions install clean all
-.PHONY: python core-python adapter-litellm-python adapter-nemo-relay-python
-.PHONY: sink-chargebee-python
+
+.PHONY: python core-python adapter-litellm-python adapter-nemo-relay-python sink-chargebee-python
 
 PYTHON ?= python3
 
