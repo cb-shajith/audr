@@ -63,7 +63,9 @@ jobs:
 
       # Links into this repository are checked offline by `make links`, including the
       # absolute github.com/openaudr/audr/blob/main/... form the PyPI READMEs use, which
-      # would 404 here until the branch reaches main.
+      # would 404 here until the branch reaches main. The raw.githubusercontent.com form,
+      # which the NeMo Relay README uses to fetch its example, is excluded for the same
+      # reason.
       - name: External URLs respond
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
         with:
@@ -72,6 +74,7 @@ jobs:
             --no-progress
             --accept 200,206,429
             --exclude 'https://github\.com/openaudr/audr/'
+            --exclude 'https://raw\.githubusercontent\.com/openaudr/audr/'
             --exclude 'mailto:'
             --exclude-path spec/prose
             '**/*.md'

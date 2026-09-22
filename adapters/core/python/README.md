@@ -3,6 +3,9 @@
 [![PyPI](https://img.shields.io/pypi/v/audr?include_prereleases)](https://pypi.org/project/audr/)
 [![Python versions](https://img.shields.io/pypi/pyversions/audr)](https://pypi.org/project/audr/)
 
+> **Status: alpha.** The record model tracks AUDR v1.0.0 and is stable; the Python API
+> may change in minor releases before 1.0.
+
 Vendor-neutral Python SDK for emitting [AUDR](https://openaudr.dev/spec/v1.0.0/) (Agent Usage
 Detail Record) v1.0.0 records: build records, validate them against the published schema, and
 deliver them to any `Sink` (a file, a queue, a metering backend) through a bounded, batching
@@ -78,9 +81,7 @@ define the standard this package is tested against.
 
 ## Contributing
 
-[`AGENTS.md`](https://github.com/openaudr/audr/blob/main/adapters/core/python/AGENTS.md)
-records how to work inside this package — its layout, its invariants, and its commands.
-[`adapters/CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/adapters/CONTRIBUTING.md)
-describes how to contribute an adapter, and the top-level
-[`CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/CONTRIBUTING.md) covers
-repository setup and process.
+Contributions are welcome — see
+[`CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/CONTRIBUTING.md).
+
+Licensed under Apache-2.0.

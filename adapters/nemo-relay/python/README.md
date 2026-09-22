@@ -21,12 +21,14 @@ at activation, so importing this package leaves it out of the process.
 
 A runnable [NeMo Relay terminal chat example](https://github.com/openaudr/audr/blob/main/adapters/nemo-relay/python/examples/nemo_relay_chat.py) shows
 plugin configuration, scoped attribution, an OpenAI-compatible model call, handoff drain,
-and shutdown in one file. From this package directory:
+and shutdown in one file. The `example` extra installs everything it imports; the file
+itself lives in the repository rather than in the distribution:
 
 ```bash
-pip install -e ".[example]"
+pip install "audr-adapter-nemo-relay[example]"
+curl -O https://raw.githubusercontent.com/openaudr/audr/main/adapters/nemo-relay/python/examples/nemo_relay_chat.py
 export OPENAI_API_KEY="..."
-python examples/nemo_relay_chat.py
+python nemo_relay_chat.py
 ```
 
 The example makes billable network requests and appends usage records to
@@ -104,17 +106,6 @@ explicitly. That loop must be running when Relay activates the component.
 One instance accepts one component activation: two would install two subscribers over
 the same process-wide event stream and double-count every operation.
 
-### Errors
-
-| Error | Raised when |
-| --- | --- |
-| `NeMoRelayCompatibilityError` (a `ConfigurationError`) | The `nemo-relay` distribution is missing or outside `>=0.8,<0.9`. |
-| `ConfigurationError` | Relay activated the component with configuration this plugin rejects. |
-| `NeMoRelayActivationError` (a `LifecycleError`) | The host misused the lifecycle: no running loop, a second activation, or `drain()` after `close()`. |
-
-A `register()` that raises for any reason leaves the instance unregistered, because
-Relay rolls back every registration from that initialization.
-
 ## Attribution
 
 Put AUDR attribution on the **root** Relay scope start under the `audr`
@@ -146,79 +137,26 @@ when `environment` is `production`. `subscription_id` is not required by this
 integration or by core AUDR; a destination that needs one to route or bill usage
 (for example, the Chargebee sink) rejects records that arrive without it.
 
-Resolution rules:
-
-- Scope **start** metadata wins over `attribution_defaults`, field by field. Metadata on a
-  completing scope is ignored, so a child cannot re-bill work its root already claimed.
-- Child scopes inherit the snapshot taken at their parent's start.
-- Relay never emits the outermost scope's own parent. A scope whose parent the plugin has
-  **never observed** is therefore treated as a new billing root, and
-  `attribution_defaults` apply.
-- A scope whose parent the plugin observed and then **lost** — an evicted or already
-  completed ancestor — is skipped instead of falling back to defaults, unless its own
-  start declares the `audr` namespace. The ancestor that carried attribution is gone,
-  and static defaults could bill the wrong subscription.
-
-To require per-scope attribution and never bill to a fallback, omit `environment` from
-`attribution_defaults`. Scopes that do not carry their own `environment` then resolve to
-an incomplete attribution and are skipped.
+Scope start metadata wins over `attribution_defaults` field by field, and child scopes
+inherit the snapshot taken at their parent's start;
+[attribution resolution](https://github.com/openaudr/audr/blob/main/adapters/nemo-relay/python/docs/attribution.md) states the full rules, including how
+to require per-scope attribution and never bill to a fallback.
 
 Do not place credentials in Relay metadata. The plugin reads no prompts, model responses,
 tool arguments, or tool results.
 
-## LLM response codecs
+## Reference
 
-Relay only emits provider-normalized token usage when the managed LLM call has a response
-codec. Pass the matching codec to `nemo_relay.llm.execute`, for example
-`nemo_relay.codecs.OpenAIChatCodec()`. An LLM end event without
-`category_profile.annotated_response.usage` is skipped; the plugin derives usage from the
-annotated response alone. Relay's `prompt_tokens` is the inclusive prompt total; AUDR's
-`input_tokens` excludes cache reads and writes, so when Relay reports `cache_read_tokens` or
-`cache_write_tokens` they are subtracted from it.
+Behaviour consulted once the plugin is running, in the repository:
 
-The billed model name is the provider-echoed `annotated_response.model`, as AUDR requires
-(`resource.name` is the verbatim provider identifier), falling back to the `model_name` you
-passed to `nemo_relay.llm.execute`. Providers version that echoed name — `gpt-4o` answering
-as `gpt-4o-2024-08-06` — so aggregate across versions downstream rather than in the record.
-
-The provider name is the Relay call name, lowercased and reduced to the `[a-z0-9-]`
-alphabet AUDR requires, so a call named `My Provider_v2` meters as `my-provider-v2`.
-Tool executions are client-executed, so they report the provider `self-hosted` and the
-metering class `invocation`; the tool name is `resource.name`. LLM operations are billed
-with `resource.operation="generation"` and `resource.modality="text"`.
-
-## Record shape
-
-Every completed operation becomes one `AUDR` record, with `record_id` minted fresh by
-the SDK (Relay's scope UUIDs are not UUIDv7, the identifier shape AUDR's `record_id`
-requires). The Relay scope UUID that ties related records together is carried on
-`run.span_id` instead, and the Relay root scope UUID is `run.run_id`. The client applies
-the normal AUDR validation before handing the record to your sink. `requests` and
-`call_count` are one per completed operation. `total_tokens`, raw payloads, opaque
-results, and cost are never copied.
-
-## Operational warnings and bounds
-
-Runtime counters live in the client, not the plugin. Skipped, malformed, dropped, evicted, and
-internal-failure events produce privacy-safe warnings containing only stable event IDs,
-field paths, counts, and queue outcomes. Unexpected failures are logged with a traceback;
-values from the event are never logged. Use the host application's logs for plugin
-failures and `client.stats` for end-to-end delivery totals. Relay component validation
-returns the `ConfigDiagnostic` values Relay's Plugin protocol requires, each carrying a
-stable `NeMoRelayDiagnosticCode`.
-
-`max_pending_handoffs` bounds records waiting to reach the client's event loop
-(1–100000, default 1000). `max_tracked_scopes` bounds incomplete structural scope state
-(1–1000000, default 10000). Overflow is non-blocking: handoffs are dropped and old
-incomplete scopes are evicted, with corresponding warnings.
+- [Errors](https://github.com/openaudr/audr/blob/main/adapters/nemo-relay/python/docs/errors.md) — every exception this package raises and what produces it.
+- [Attribution resolution](https://github.com/openaudr/audr/blob/main/adapters/nemo-relay/python/docs/attribution.md) — how scope metadata, inheritance and defaults combine.
+- [Record mapping](https://github.com/openaudr/audr/blob/main/adapters/nemo-relay/python/docs/record-mapping.md) — how Relay LLM and tool events become AUDR fields, including response codecs and token accounting.
+- [Operational warnings and bounds](https://github.com/openaudr/audr/blob/main/adapters/nemo-relay/python/docs/operations.md) — the warnings the plugin emits, and the handoff and scope limits.
 
 ## Contributing
 
-[`AGENTS.md`](https://github.com/openaudr/audr/blob/main/adapters/nemo-relay/python/AGENTS.md)
-records how to work inside this package — its layout, its invariants, and its commands.
-[`adapters/CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/adapters/CONTRIBUTING.md)
-describes how to contribute an adapter, and the top-level
-[`CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/CONTRIBUTING.md) covers
-repository setup and process.
+Contributions are welcome — see
+[`CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/CONTRIBUTING.md).
 
 Licensed under Apache-2.0.

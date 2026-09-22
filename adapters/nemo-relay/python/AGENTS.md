@@ -24,6 +24,7 @@ attributed `AUDR` records to an `audr.Client` the host application owns.
 | `src/audr_adapter_nemo_relay/_errors.py` | Exceptions with stable codes and value-free messages |
 | `tests/` | The suite; `test_runtime.py` carries the `nemo_relay`-marked tests that need the real runtime |
 | `examples/nemo_relay_chat.py` | A terminal chat that makes billable network calls; not run in CI |
+| `docs/` | The reference the README links to: errors, attribution resolution, record mapping, operational bounds |
 
 ## Rules
 

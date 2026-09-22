@@ -149,6 +149,7 @@ every other document links to it.
 | `README.md` | A reader who uses the software | Repository, tier, component, language package |
 | `CONTRIBUTING.md` | A reader who wants a change accepted | Repository and tier only |
 | `AGENTS.md` | Anyone working inside that tree — a coding agent or a maintainer | Repository, tier, language package |
+| `docs/*.md` | A reader who uses the software and needs the full reference | Language package |
 
 | Fact | Home |
 | --- | --- |
@@ -159,6 +160,7 @@ every other document links to it.
 | How to work inside one package | That package's `AGENTS.md` |
 | Data-handling prohibitions | `SECURITY.md` |
 | The example AUDR record | `README.md` |
+| Reference detail a package's README is too long to carry | That package's `docs/` |
 
 Rules that follow from the table:
 

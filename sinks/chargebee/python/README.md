@@ -2,6 +2,9 @@
 
 [![PyPI](https://img.shields.io/pypi/v/audr-sink-chargebee?include_prereleases)](https://pypi.org/project/audr-sink-chargebee/)
 
+> **Status: alpha.** The record model tracks AUDR v1.0.0 and is stable; the Python API
+> may change in minor releases before 1.0.
+
 The Chargebee sink for [AUDR](https://openaudr.dev). Delivers `audr.AUDR` record
 batches to a site's usage-ingest batch endpoint.
 
@@ -96,7 +99,10 @@ the [security policy](https://github.com/openaudr/audr/blob/main/SECURITY.md) fo
 the full rules. Enforce them where the record is built — that is the last point at
 which they can be enforced.
 
-## Configuration
+## Retry, transport and flattening
+
+Delivery behaviour is tuned on the constructor, alongside the `site` and `api_key`
+described above:
 
 ```python
 from audr_sink_chargebee import ChargebeeSink, HttpTransportConfig, RetryPolicy
@@ -104,27 +110,15 @@ from audr_sink_chargebee import ChargebeeSink, HttpTransportConfig, RetryPolicy
 sink = ChargebeeSink(
     site="acme",
     api_key="...",
-    ingest_domain="ingest.chargebee.com",  # optional; this is the default
     retry=RetryPolicy(max_attempts=3),
     http=HttpTransportConfig(read_timeout=10.0),
     separator="_",
 )
 ```
 
-An `ingest_url=` (or `CHARGEBEE_INGEST_URL`) direct override is also available in
-place of `site`/`ingest_domain`:
-
-```python
-sink = ChargebeeSink(ingest_url="https://acme.ingest.chargebee.com", api_key="...")
-```
-
 ## Contributing
 
-[`AGENTS.md`](https://github.com/openaudr/audr/blob/main/sinks/chargebee/python/AGENTS.md)
-records how to work inside this package — its layout, its invariants, and its commands.
-[`sinks/CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/sinks/CONTRIBUTING.md)
-describes how to contribute a sink, and the top-level
-[`CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/CONTRIBUTING.md) covers
-repository setup and process.
+Contributions are welcome — see
+[`CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/CONTRIBUTING.md).
 
 Licensed under Apache-2.0.
