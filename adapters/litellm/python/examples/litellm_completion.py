@@ -44,7 +44,9 @@ async def main() -> None:
                 messages=[{"role": "user", "content": "Reply with one short greeting."}],
                 metadata={
                     "audr": {
-                        "attribution": {"subscription_id": "subscription_123"},
+                        "attribution": Attribution(subscription_id="subscription_123").model_dump(
+                            exclude_none=True
+                        ),
                         "run": {
                             "run_id": "example-agent-run",
                             "run_type": "agent_run",
