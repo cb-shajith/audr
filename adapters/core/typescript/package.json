@@ -58,6 +58,10 @@
     "check:package": "publint --strict && attw --pack . --profile esm-only",
     "prepack": "npm run build"
   },
+  "dependencies": {
+    "uuid": "^14.0.2",
+    "zod": "^4.6.5"
+  },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@eslint/js": "^10.0.1",

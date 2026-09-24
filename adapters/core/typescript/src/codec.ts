@@ -1,5 +1,6 @@
 import { issue, ValidationError } from './errors.js';
-import { type AudrRecord, SUPPORTED_SPEC_VERSION } from './record.js';
+import { type AudrRecord } from './record.js';
+import { SUPPORTED_SPEC_VERSION } from './schema.js';
 import { validate } from './validate.js';
 
 /**

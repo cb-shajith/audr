@@ -53,6 +53,19 @@ describe('validate: structure', () => {
     ]);
   });
 
+  it('rejects __proto__ as an unknown property, not as a prototype', () => {
+    const json = JSON.stringify(makeRecord());
+    const parsed = (text: string): unknown => JSON.parse(text);
+    expect(pairs(parsed(`${json.slice(0, -1)},"__proto__":{"a":1}}`))).toEqual([
+      ['UNKNOWN_PROPERTY', '/__proto__'],
+    ]);
+    expect(pairs(parsed(json.replace('"llm":{', '"llm":{"__proto__":1,')))).toEqual([
+      ['UNKNOWN_PROPERTY', '/usage/llm/__proto__'],
+    ]);
+    const labels = json.replace('"attribution":{', '"attribution":{"labels":{"__proto__":1},');
+    expect(pairs(parsed(labels))).toEqual([['INVALID_TYPE', '/attribution/labels/*']]);
+  });
+
   it('rejects wrong types, bad enumerants and empty strings', () => {
     expect(pairs(withBlock('emitter', { component: 'sdk' }))).toEqual([
       ['INVALID_ENUM', '/emitter/component'],

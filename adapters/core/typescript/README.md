@@ -9,8 +9,8 @@
 Vendor-neutral TypeScript SDK for emitting [AUDR](https://openaudr.dev/spec/v1.0.0/) (Agent
 Usage Detail Record) v1.0.0 records: build records, validate them against the published
 schema, and deliver them to any `Sink` (a file, a queue, a metering backend) through a
-bounded, batching async pipeline. Zero runtime dependencies; ESM with full type
-declarations.
+bounded, batching async pipeline. Two small runtime dependencies (`zod` and `uuid`); ESM
+with full type declarations.
 
 ## Install
 

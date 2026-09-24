@@ -18,8 +18,9 @@ or runtime.
 
 | Path | Owns |
 | --- | --- |
-| `src/record.ts` | The record types, the vocabularies (`as const` arrays), and `createRecord` |
-| `src/validate.ts` | Structural rules transcribed from the schema (`SHAPES`) and the cross-field rules |
+| `src/schema.ts` | The vocabularies (`as const` arrays) and the Zod schemas transcribed from the JSON Schema (`SHAPES`) |
+| `src/record.ts` | The record types, inferred from `src/schema.ts`, and `createRecord` |
+| `src/validate.ts` | Zod issues mapped to AUDR issues, and the cross-field rules |
 | `src/codec.ts`, `src/errors.ts` | `parseRecord` / `decodeRecord` / `encodeRecord`, error codes and error classes |
 | `src/sink.ts` | The sink contract: `Sink`, `BatchResult`, `RejectedRecord` |
 | `src/client.ts`, `src/pipeline.ts`, `src/results.ts` | The bounded, batching delivery pipeline behind `Client` |
@@ -36,11 +37,12 @@ or runtime.
    (`audr`, `audr/file`, `audr/testing`), and `tests/public-api.test.ts` pins their
    runtime exports. Adding an export is a public API change; make it deliberately and
    update the test. Keep the surface small.
-2. There are no runtime dependencies, and the root entry point imports nothing from
-   `node:` so it runs in any modern JavaScript runtime. Node-only code lives behind a
-   subpath export; ESLint rejects `node:` imports and Node globals elsewhere in `src/`.
-   `make isolation` packs the tarball and checks that it installs with no dependencies and
-   loads through both `import` and `require`.
+2. Runtime dependencies are `zod` (imported only as `zod/mini`) and `uuid`, neither with
+   dependencies of its own. Add another only by agreement. The root entry point imports
+   nothing from `node:` so it runs in any modern JavaScript runtime. Node-only code lives
+   behind a subpath export; ESLint rejects `node:` imports and Node globals elsewhere in
+   `src/`. `make isolation` packs the tarball and checks that it installs exactly the
+   declared dependencies and loads through both `import` and `require`.
 3. Records are plain objects in the wire format (snake_case). API options and results are
    camelCase. Do not add record classes or a mapping layer.
 4. `record()` is the only entry point to the delivery pipeline. It is synchronous, never
@@ -49,10 +51,11 @@ or runtime.
 5. Every record admitted through `record()` ends in exactly one terminal state: `sent`,
    `dropped` or `unknown`. The states are defined in
    [`../README.md`](../README.md#delivery-states). `unknown` is terminal; never relabel it.
-6. The structural rules in `src/validate.ts` mirror `spec/audr.schema.json` by hand.
-   `tests/schema.test.ts` fails when a property, required list, vocabulary, or length or
-   numeric bound drifts, and the conformance fixtures must all pass. String lengths count
-   code points, as JSON Schema does. Do not package the JSON Schema.
+6. The Zod schemas in `src/schema.ts` mirror `spec/audr.schema.json` by hand, and every
+   Zod error they raise is an `ErrorCode`. `tests/schema.test.ts` fails when a property,
+   required list, vocabulary, or length or numeric bound drifts, and the conformance
+   fixtures must all pass. String lengths count code points, as JSON Schema does. Do not
+   package the JSON Schema.
 7. Diagnostics carry field names and JSON-pointer paths, never values. `ValidationIssue`
    carries a code and a path, and log lines carry error class names, never messages.
 8. `Sink` is a structural interface. A third-party sink imports `BatchResult` and

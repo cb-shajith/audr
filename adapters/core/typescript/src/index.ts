@@ -17,7 +17,6 @@ export {
   type Emitter,
   type EmitterComponent,
   type Environment,
-  type ExtensionKey,
   type LlmCost,
   type LlmUsage,
   type Modality,
@@ -28,12 +27,12 @@ export {
   type Run,
   type RunOutcome,
   type RunType,
-  SPEC_VERSION,
   type Timing,
   type ToolCost,
   type ToolUsage,
   type Usage,
 } from './record.js';
+export { type ExtensionKey, SPEC_VERSION } from './schema.js';
 export type {
   DeliveredCallback,
   DeliveryStats,

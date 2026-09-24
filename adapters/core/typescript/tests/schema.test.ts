@@ -17,10 +17,11 @@ import {
   RESOURCE_TYPES,
   RUN_OUTCOMES,
   RUN_TYPES,
+  SHAPES,
   SPEC_VERSION,
-} from '../src/record.js';
+} from '../src/schema.js';
 import { makeRecord } from '../src/testing.js';
-import { SHAPES, validate } from '../src/validate.js';
+import { validate } from '../src/validate.js';
 
 interface SchemaNode {
   readonly $id?: string;
@@ -54,9 +55,7 @@ describe('schema drift', () => {
 
   it.each(Object.entries(SHAPES))('the %s object matches the schema', (dotted, shape) => {
     const schema = node(dotted);
-    expect(Object.keys(shape.properties).sort()).toEqual(
-      Object.keys(schema.properties ?? {}).sort(),
-    );
+    expect([...shape.properties].sort()).toEqual(Object.keys(schema.properties ?? {}).sort());
     expect([...shape.required].sort()).toEqual([...(schema.required ?? [])].sort());
     expect(shape.extensions !== undefined).toBe(schema.patternProperties !== undefined);
   });

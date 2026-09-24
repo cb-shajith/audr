@@ -1,13 +1,18 @@
 /**
  * Pack the package, install the tarball into an empty project, and prove that it installs
- * with no runtime dependencies and loads through both `import` and `require`.
+ * only its declared runtime dependencies, none of which brings its own, and loads through
+ * both `import` and `require`.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const root = join(import.meta.dirname, '..');
+const { dependencies = {} } = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')) as {
+  dependencies?: Record<string, string>;
+};
+const expected = ['audr', ...Object.keys(dependencies)].sort();
 const project = mkdtempSync(join(tmpdir(), 'audr-verify-'));
 const run = (command: string, args: string[]): string =>
   execFileSync(command, args, { cwd: project, encoding: 'utf8' });
@@ -39,18 +44,18 @@ try {
   writeFileSync(join(project, 'package.json'), '{ "private": true, "type": "module" }\n');
   run('npm', ['install', '--silent', '--no-audit', '--no-fund', join(project, tarball)]);
 
-  const installed = readdirSync(join(project, 'node_modules')).filter(
-    (name) => !name.startsWith('.'),
-  );
-  if (installed.join() !== 'audr') {
-    throw new Error(`expected no runtime dependencies, found: ${installed.join(', ')}`);
+  const installed = readdirSync(join(project, 'node_modules'))
+    .filter((name) => !name.startsWith('.'))
+    .sort();
+  if (installed.join() !== expected.join()) {
+    throw new Error(`expected ${expected.join(', ')}, found: ${installed.join(', ')}`);
   }
 
   writeFileSync(join(project, 'smoke.mjs'), ESM_SMOKE);
   writeFileSync(join(project, 'smoke.cjs'), CJS_SMOKE);
   run('node', ['smoke.mjs']);
   run('node', ['smoke.cjs']);
-  console.log(`  ${tarball} installs with no dependencies and loads via import and require`);
+  console.log(`  ${tarball} installs ${expected.join(', ')} and loads via import and require`);
 } finally {
   rmSync(project, { recursive: true, force: true });
 }
