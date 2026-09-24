@@ -8,7 +8,7 @@ records and submits them through an existing `audr.Client`. The host application
 owns the client, sink, callback registration, and shutdown sequence.
 
 The first release supports the LiteLLM Python SDK and `Router` on
-`litellm>=1.101,<1.102`. LiteLLM Proxy deployment is not yet supported because
+`litellm>=1.95,<2`. LiteLLM Proxy deployment is not yet supported because
 the Proxy does not expose a documented callback-shutdown hook with which this
 adapter can guarantee that its AUDR client has drained.
 
@@ -21,8 +21,8 @@ pip install "audr-adapter-litellm[runtime]"
 ## Quick start
 
 Construct the callback on the running event loop that owns the AUDR client,
-append it without replacing other LiteLLM callbacks, and leave it registered
-while requests are in flight:
+register it through LiteLLM's callback manager without replacing other
+callbacks, and leave it registered while requests are in flight:
 
 ```python
 import asyncio
@@ -42,7 +42,6 @@ async def wait_for_callback(client: Client, submitted_before: int) -> None:
 
 
 async def main() -> None:
-    old_callbacks = list(litellm.callbacks)
     async with Client(FileSink("usage.jsonl")) as client:
         callback = LiteLLMAudrCallback(
             client=client,
@@ -53,7 +52,7 @@ async def main() -> None:
                 )
             ),
         )
-        litellm.callbacks = [*old_callbacks, callback]
+        litellm.logging_callback_manager.add_litellm_callback(callback)
         try:
             submitted_before = client.stats.submitted
             await litellm.acompletion(
@@ -71,7 +70,7 @@ async def main() -> None:
             )
             await wait_for_callback(client, submitted_before)
         finally:
-            litellm.callbacks = old_callbacks
+            litellm.logging_callback_manager.remove_callback_from_all_lists(callback)
             await callback.drain(timeout=5)
             callback.close()
 
@@ -102,12 +101,16 @@ other attempts that have no metering evidence.
   tokens.
 - Rerank `meta.tokens` maps to input and output tokens. When only
   `meta.billed_units.total_tokens` is available it becomes input usage, and
-  billed search units are preserved as `usage.llm.x_search_units`.
-- LiteLLM `response_cost`, when present, is an informational USD cost assertion.
+  billed search units are preserved as `usage.llm.x_<provider>_search_units`,
+  for example `usage.llm.x_cohere_search_units`.
+- LiteLLM `response_cost`, when present, becomes `cost.total_cost` in USD. It is
+  a net amount that can include built-in tool fees, LiteLLM discounts and
+  margins, so the adapter does not report it as `cost.llm.total_token_cost`.
 - A successful metered call carries `usage.llm.requests=1`.
 
-Failures are skipped unless their callback itself contains explicit usage or
-cost. A metered failure receives a stable `LiteLLMRunErrorCode`; raw exception
+Failures are skipped unless their callback itself contains explicit usage or a
+positive cost. LiteLLM sets `response_cost` to zero on failures, so a zero cost
+is not treated as metering evidence. A metered failure receives a stable `LiteLLMRunErrorCode`; raw exception
 messages are never copied.
 
 LiteLLM can return model-requested tool calls, but it does not execute the
@@ -187,7 +190,7 @@ lifecycle.
 
 ## Shutdown order
 
-LiteLLM logging callbacks run out of band and LiteLLM 1.101 has no documented
+LiteLLM logging callbacks run out of band and LiteLLM 1.x has no documented
 callback flush API. Shutdown must therefore happen after request tasks and
 streams have finished:
 
@@ -196,7 +199,10 @@ streams have finished:
 3. Allow the corresponding LiteLLM logging tasks to run. Applications that
    know how many metered calls they issued can observe `client.stats.submitted`;
    server processes normally use their graceful-shutdown window.
-4. Restore or remove the callback from `litellm.callbacks`.
+4. Unregister the callback with
+   `litellm.logging_callback_manager.remove_callback_from_all_lists(callback)`.
+   LiteLLM copies registered callbacks into its internal success and failure
+   lists, so restoring `litellm.callbacks` alone leaves the callback active.
 5. Await `callback.drain()` so accepted cross-thread handoffs reach
    `client.record()`.
 6. Call `callback.close()`, then exit or shut down the client so its delivery

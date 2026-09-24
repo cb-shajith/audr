@@ -127,7 +127,7 @@ def test_maps_real_rerank_tokens_and_billed_search_units() -> None:
         },
     )
     result = map_result(
-        kwargs=callback_kwargs(call_type="arerank"),
+        kwargs=callback_kwargs(call_type="arerank", custom_llm_provider="cohere"),
         response_obj=rerank_response,
     )
     usage = _ready(result).record.usage.llm
@@ -135,7 +135,7 @@ def test_maps_real_rerank_tokens_and_billed_search_units() -> None:
     assert usage is not None
     assert usage.input_tokens == 42
     assert usage.output_tokens == 3
-    assert usage.model_extra == {"x_search_units": 2}
+    assert usage.model_extra == {"x_cohere_search_units": 2}
     assert usage.requests == 1
 
 
@@ -146,7 +146,7 @@ def test_rerank_billed_total_falls_back_to_input_tokens() -> None:
         meta={"billed_units": {"total_tokens": 45, "search_units": 1}},
     )
     result = map_result(
-        kwargs=callback_kwargs(call_type="rerank"),
+        kwargs=callback_kwargs(call_type="rerank", custom_llm_provider="azure_ai"),
         response_obj=rerank_response,
     )
     usage = _ready(result).record.usage.llm
@@ -154,7 +154,7 @@ def test_rerank_billed_total_falls_back_to_input_tokens() -> None:
     assert usage is not None
     assert usage.input_tokens == 45
     assert usage.output_tokens is None
-    assert usage.model_extra == {"x_search_units": 1}
+    assert usage.model_extra == {"x_azure_ai_search_units": 1}
 
 
 @pytest.mark.parametrize(
@@ -174,14 +174,13 @@ def test_supported_call_types(call_type: str, operation: str) -> None:
     assert record.resource.operation == operation
 
 
-def test_cost_is_encoded_as_an_informational_usd_assertion() -> None:
+def test_cost_is_encoded_as_a_net_usd_total_without_a_token_breakdown() -> None:
     record = _ready(map_result(kwargs=callback_kwargs(response_cost=0.0125))).record
 
     assert record.cost is not None
     assert record.cost.total_cost == 0.0125
     assert record.cost.currency == "USD"
-    assert record.cost.llm is not None
-    assert record.cost.llm.total_token_cost == 0.0125
+    assert record.cost.llm is None
 
 
 def test_cost_alone_is_sufficient_metering_evidence() -> None:
@@ -205,6 +204,31 @@ def test_unmetered_failure_is_skipped() -> None:
     )
 
     assert result == RecordSkipped("/usage")
+
+
+def test_failure_with_litellm_zero_cost_and_no_usage_is_skipped() -> None:
+    result = map_result(
+        kwargs=callback_kwargs(exception=TimeoutError("private message"), response_cost=0),
+        response_obj={"model": "model"},
+        failed=True,
+    )
+
+    assert result == RecordSkipped("/usage")
+
+
+def test_failure_with_positive_cost_and_no_usage_is_metered() -> None:
+    result = map_result(
+        kwargs=callback_kwargs(exception=TimeoutError("private message"), response_cost=0.002),
+        response_obj={"model": "model"},
+        failed=True,
+    )
+    record = _ready(result).record
+
+    assert record.usage.llm is not None
+    assert record.usage.llm.requests == 1
+    assert record.cost is not None
+    assert record.cost.total_cost == 0.002
+    assert record.run.error_code == LiteLLMRunErrorCode.TIMEOUT
 
 
 def test_litellm_cache_hit_is_not_billed_as_a_provider_call() -> None:
@@ -295,6 +319,23 @@ def test_invalid_or_unknown_metadata_is_value_free() -> None:
 
     assert result == RecordMalformed("/litellm_params/metadata/audr")
     assert "private@example.com" not in result.path
+
+
+@pytest.mark.parametrize(
+    ("audr_metadata", "path"),
+    [
+        ({"run": {"run_id": "short"}}, "/run/run_id"),
+        ({"resource": {"deployment": ""}}, "/resource/deployment"),
+    ],
+)
+def test_schema_invalid_run_or_resource_is_malformed_by_path(
+    audr_metadata: dict[str, object], path: str
+) -> None:
+    result = map_result(
+        kwargs=callback_kwargs(litellm_params={"metadata": {"audr": audr_metadata}})
+    )
+
+    assert result == RecordMalformed(path)
 
 
 @pytest.mark.parametrize(

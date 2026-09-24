@@ -33,7 +33,7 @@ dependencies = [
 
 [project.optional-dependencies]
 runtime = [
-  "litellm>=1.101,<1.102",
+  "litellm>=1.95,<2",
 ]
 
 [project.urls]

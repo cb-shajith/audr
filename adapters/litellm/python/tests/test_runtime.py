@@ -26,9 +26,6 @@ async def _wait_for_submission(client: Client, *, expected: int) -> None:
 async def test_sdk_streaming_sync_and_router_fallback_runtime() -> None:
     """Exercise all supported LiteLLM paths with one process-wide callback."""
     sink = MemorySink()
-    old_callbacks = [
-        callback for callback in litellm.callbacks if not isinstance(callback, LiteLLMAudrCallback)
-    ]
     router = Router(
         model_list=[
             {
@@ -56,7 +53,7 @@ async def test_sdk_streaming_sync_and_router_fallback_runtime() -> None:
                 attribution_defaults=Attribution(environment="test"),
             ),
         )
-        litellm.callbacks = [*old_callbacks, callback]
+        litellm.logging_callback_manager.add_litellm_callback(callback)
         try:
             await litellm.acompletion(
                 model="openai/test-model",
@@ -106,9 +103,10 @@ async def test_sdk_streaming_sync_and_router_fallback_runtime() -> None:
             assert client.stats.submitted == 4
             await client.flush()
         finally:
-            litellm.callbacks = old_callbacks
+            litellm.logging_callback_manager.remove_callback_from_all_lists(callback)
             callback.close()
             router.reset()  # type: ignore[no-untyped-call]
+    assert callback not in litellm.logging_callback_manager._get_all_callbacks()
     assert chunks
     assert isinstance(fallback_result, litellm.ModelResponse)
     assert fallback_result.model == "fallback-model"

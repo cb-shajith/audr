@@ -35,7 +35,6 @@ async def main() -> None:
         fallbacks=[{"primary": ["fallback"]}],
         num_retries=0,
     )
-    old_callbacks = list(litellm.callbacks)
 
     async with Client(FileSink("router-usage.jsonl")) as client:
         callback = LiteLLMAudrCallback(
@@ -48,7 +47,7 @@ async def main() -> None:
                 )
             ),
         )
-        litellm.callbacks = [*old_callbacks, callback]
+        litellm.logging_callback_manager.add_litellm_callback(callback)
         try:
             submitted_before = client.stats.submitted
             response = await router.acompletion(
@@ -66,7 +65,7 @@ async def main() -> None:
             await _wait_for_callback(client, submitted_before)
             print(response.choices[0].message.content)
         finally:
-            litellm.callbacks = old_callbacks
+            litellm.logging_callback_manager.remove_callback_from_all_lists(callback)
             await callback.drain(timeout=5)
             callback.close()
             router.reset()  # type: ignore[no-untyped-call]

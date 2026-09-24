@@ -23,6 +23,7 @@ identity and attribution that records from different systems join.
 | --- | --- |
 | `adapters/` | [`adapters/AGENTS.md`](adapters/AGENTS.md) |
 | `adapters/core/python/` | [`adapters/core/python/AGENTS.md`](adapters/core/python/AGENTS.md) |
+| `adapters/litellm/python/` | [`adapters/litellm/python/AGENTS.md`](adapters/litellm/python/AGENTS.md) |
 | `adapters/nemo-relay/python/` | [`adapters/nemo-relay/python/AGENTS.md`](adapters/nemo-relay/python/AGENTS.md) |
 | `sinks/` | [`sinks/AGENTS.md`](sinks/AGENTS.md) |
 | `sinks/chargebee/python/` | [`sinks/chargebee/python/AGENTS.md`](sinks/chargebee/python/AGENTS.md) |

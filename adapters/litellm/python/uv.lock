@@ -292,7 +292,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "audr", editable = "../../core/python" },
-    { name = "litellm", marker = "extra == 'runtime'", specifier = ">=1.101,<1.102" },
+    { name = "litellm", marker = "extra == 'runtime'", specifier = ">=1.95,<2" },
     { name = "pydantic", specifier = ">=2.10,<3" },
 ]
 provides-extras = ["runtime"]

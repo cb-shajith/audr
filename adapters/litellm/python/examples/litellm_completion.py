@@ -24,7 +24,6 @@ async def _wait_for_callback(client: Client, submitted_before: int) -> None:
 async def main() -> None:
     model = os.getenv("LITELLM_MODEL", "openai/gpt-4o-mini")
     sink = FileSink("litellm-usage.jsonl")
-    old_callbacks = list(litellm.callbacks)
 
     async with Client(sink) as client:
         callback = LiteLLMAudrCallback(
@@ -36,7 +35,7 @@ async def main() -> None:
                 )
             ),
         )
-        litellm.callbacks = [*old_callbacks, callback]
+        litellm.logging_callback_manager.add_litellm_callback(callback)
         try:
             submitted_before = client.stats.submitted
             response = await litellm.acompletion(
@@ -57,7 +56,7 @@ async def main() -> None:
             await _wait_for_callback(client, submitted_before)
             print(response.choices[0].message.content)
         finally:
-            litellm.callbacks = old_callbacks
+            litellm.logging_callback_manager.remove_callback_from_all_lists(callback)
             await callback.drain(timeout=5)
             callback.close()
 

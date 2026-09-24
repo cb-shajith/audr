@@ -15,7 +15,6 @@ from audr import (
     Attribution,
     Cost,
     Emitter,
-    LlmCost,
     LlmUsage,
     Modality,
     Operation,
@@ -217,17 +216,19 @@ def map_callback(
     if operation is None:
         return RecordSkipped("/call_type")
 
-    usage_result = _usage_from(response, operation)
+    provider = _provider_from(kwargs)
+    usage_result = _usage_from(response, operation, provider)
     if isinstance(usage_result, RecordMalformed):
         return usage_result
-    cost_result = _cost_from(kwargs, response)
-    if isinstance(cost_result, RecordMalformed):
-        return cost_result
-    cost, cost_present = cost_result
-    if usage_result is None and not cost_present:
+    cost = _cost_from(kwargs, response)
+    if isinstance(cost, RecordMalformed):
+        return cost
+    # LiteLLM zeroes response_cost on every failure, so only a positive cost
+    # shows that a failed call was billed.
+    cost_is_evidence = cost is not None and (cost.total_cost > 0 or not failed)
+    if usage_result is None and not cost_is_evidence:
         return RecordSkipped("/usage")
 
-    provider = _provider_from(kwargs)
     if provider is None:
         return RecordSkipped("/custom_llm_provider")
     model = _model_from(kwargs, response)
@@ -238,9 +239,24 @@ def map_callback(
     if timing is None:
         return RecordMalformed("/timing")
 
-    usage = usage_result or LlmUsage(requests=1)
+    resource = _parse(
+        Resource,
+        {
+            "provider": provider,
+            "type": "model",
+            "name": model,
+            "operation": operation,
+            **metadata.resource.model_dump(exclude_none=True),
+        },
+        "/resource",
+    )
+    if isinstance(resource, RecordMalformed):
+        return resource
     run = _run_from(kwargs, metadata.run, failed=failed)
-    resource_metadata = metadata.resource
+    if isinstance(run, RecordMalformed):
+        return run
+
+    usage = usage_result or LlmUsage(requests=1)
     record = AUDR(
         emitter=Emitter(
             component="router",
@@ -248,16 +264,7 @@ def map_callback(
             version=_litellm_version(),
         ),
         timing=timing,
-        resource=Resource(
-            provider=provider,
-            type="model",
-            name=model,
-            operation=operation,
-            modality=resource_metadata.modality,
-            key_name=resource_metadata.key_name,
-            region=resource_metadata.region,
-            deployment=resource_metadata.deployment,
-        ),
+        resource=resource,
         usage=Usage(llm=usage),
         run=run,
         attribution=attribution,
@@ -327,12 +334,13 @@ def _operation_from(value: object) -> Operation | None:
 def _usage_from(
     response: object,
     operation: Operation,
+    provider: str | None,
 ) -> LlmUsage | RecordMalformed | None:
     usage = _field(response, "usage")
     if usage is not _MISSING and usage is not None:
         return _standard_usage_from(usage)
     if operation == "reranking":
-        return _rerank_usage_from(response)
+        return _rerank_usage_from(response, provider)
     return None
 
 
@@ -352,7 +360,7 @@ def _standard_usage_from(usage: object) -> LlmUsage | RecordMalformed | None:
     )
 
 
-def _rerank_usage_from(response: object) -> LlmUsage | RecordMalformed | None:
+def _rerank_usage_from(response: object, provider: str | None) -> LlmUsage | RecordMalformed | None:
     meta = _field(response, "meta")
     if meta is _MISSING or meta is None:
         return None
@@ -369,25 +377,27 @@ def _rerank_usage_from(response: object) -> LlmUsage | RecordMalformed | None:
         "output_tokens": parsed.output_tokens,
         "requests": 1,
     }
-    if parsed.search_units is not None:
-        values["x_search_units"] = parsed.search_units
+    if parsed.search_units is not None and provider is not None:
+        values[f"x_{provider.replace('-', '_')}_search_units"] = parsed.search_units
     return LlmUsage.model_validate(values)
 
 
 def _cost_from(
     kwargs: Mapping[object, object],
     response: object,
-) -> tuple[Cost | None, bool] | RecordMalformed:
+) -> Cost | RecordMalformed | None:
     raw = kwargs.get("response_cost", _MISSING)
     if raw is _MISSING or raw is None:
         raw = _field(_field(response, "_hidden_params"), "response_cost")
     if raw is _MISSING or raw is None:
-        return None, False
+        return None
     try:
         amount = _AMOUNT.validate_python(raw)
     except ValidationError:
         return RecordMalformed("/response_cost")
-    return Cost(total_cost=amount, currency="USD", llm=LlmCost(total_token_cost=amount)), True
+    # response_cost is net of LiteLLM discounts and margins and includes built-in
+    # tool fees, so it is not a gross token cost for cost.llm.
+    return Cost(total_cost=amount, currency="USD")
 
 
 def _provider_from(kwargs: Mapping[object, object]) -> str | None:
@@ -435,20 +445,21 @@ def _run_from(
     metadata: _RunMetadata,
     *,
     failed: bool,
-) -> Run:
+) -> Run | RecordMalformed:
     call_id = _non_empty(kwargs.get("litellm_call_id"))
     trace_id = _non_empty(kwargs.get("litellm_trace_id"))
-    run_id = metadata.run_id or trace_id or call_id or uuid7()
-    span_id = metadata.span_id or call_id or uuid7()
-    error_code = _error_code(kwargs.get("exception")) if failed else None
-    return Run(
-        run_id=run_id,
-        span_id=span_id,
-        parent_span_id=metadata.parent_span_id,
-        step=metadata.step,
-        trace_id=metadata.trace_id,
-        run_type=metadata.run_type or "single_call",
-        error_code=error_code,
+    return _parse(
+        Run,
+        {
+            "run_id": metadata.run_id or trace_id or call_id or uuid7(),
+            "span_id": metadata.span_id or call_id or uuid7(),
+            "parent_span_id": metadata.parent_span_id,
+            "step": metadata.step,
+            "trace_id": metadata.trace_id,
+            "run_type": metadata.run_type or "single_call",
+            "error_code": _error_code(kwargs.get("exception")) if failed else None,
+        },
+        "/run",
     )
 
 
