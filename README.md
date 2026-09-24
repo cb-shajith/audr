@@ -1,11 +1,11 @@
 # AUDR — Agent Usage Detail Record
 
-[![spec](https://img.shields.io/github/actions/workflow/status/openaudr/audr/spec-verify.yml?branch=main&label=spec)](https://github.com/openaudr/audr/actions/workflows/spec-verify.yml)
-[![docs](https://img.shields.io/github/actions/workflow/status/openaudr/audr/docs-verify.yml?branch=main&label=docs)](https://github.com/openaudr/audr/actions/workflows/docs-verify.yml)
-[![Spec v1.0.0](https://img.shields.io/badge/spec-v1.0.0-blue)](spec/SPEC.md)
-[![PyPI](https://img.shields.io/pypi/v/audr?include_prereleases&label=pypi%20audr)](https://pypi.org/project/audr/)
-[![Python versions](https://img.shields.io/pypi/pyversions/audr)](https://pypi.org/project/audr/)
-[![License Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
+![spec](https://img.shields.io/github/actions/workflow/status/openaudr/audr/spec-verify.yml?branch=main&label=spec)
+![docs](https://img.shields.io/github/actions/workflow/status/openaudr/audr/docs-verify.yml?branch=main&label=docs)
+![Spec v1.0.0](https://img.shields.io/badge/spec-v1.0.0-blue)
+![PyPI](https://img.shields.io/pypi/v/audr?include_prereleases&label=pypi%20audr)
+![Python versions](https://img.shields.io/pypi/pyversions/audr)
+![License Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)
 
 An open standard for recording who initiated an agent run and what each step
 cost, across every system the run passes through.
@@ -38,15 +38,19 @@ attribution that the records join.
 }
 ```
 
+
+
 ## Start here
 
-| Path | Contains |
-| --- | --- |
-| [`spec/`](spec/SPEC.md) | The standard: [`SPEC.md`](spec/SPEC.md) to implement it, [`audr.schema.json`](spec/audr.schema.json) to validate records, [`examples/record.json`](spec/examples/record.json) for a complete record |
-| [`conformance/`](conformance/README.md) | Language-neutral fixtures every implementation must reproduce |
-| [`adapters/`](adapters/README.md) | Things that produce records — the [Python SDK](adapters/core/python/README.md) and runtime adapters |
-| [`sinks/`](sinks/README.md) | Things that consume records — destinations such as Chargebee |
-| `tools/` | The specification generator and the repository checks, driven by the [`Makefile`](Makefile) |
+
+| Path                                    | Contains                                                                                                                                                                                            |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `[spec/](spec/SPEC.md)`                 | The standard: `[SPEC.md](spec/SPEC.md)` to implement it, `[audr.schema.json](spec/audr.schema.json)` to validate records, `[examples/record.json](spec/examples/record.json)` for a complete record |
+| `[conformance/](conformance/README.md)` | Language-neutral fixtures every implementation must reproduce                                                                                                                                       |
+| `[adapters/](adapters/README.md)`       | Things that produce records — the [Python SDK](adapters/core/python/README.md) and runtime adapters                                                                                                 |
+| `[sinks/](sinks/README.md)`             | Things that consume records — destinations such as Chargebee                                                                                                                                        |
+| `tools/`                                | The specification generator and the repository checks, driven by the `[Makefile](Makefile)`                                                                                                         |
+
 
 The schema's canonical URL is its `$id`:
 
@@ -61,6 +65,8 @@ repository, `make examples` validates every example in the specification.
 make check     # schema, examples, conformance, cross-references, staleness, links, versions
 make spec      # regenerate spec/SPEC.md from the schema, the outline and the prose
 ```
+
+
 
 ## Emitting records
 
@@ -112,24 +118,12 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-| Part | Reference implementation | Guide |
-| --- | --- | --- |
-| Core SDK | [`audr`](adapters/core/python/README.md) | [`adapters/core/README.md`](adapters/core/README.md) — the `Client`, the sink contract, delivery states |
-| Adapters | [`audr-adapter-litellm`](adapters/litellm/python/README.md), [`audr-adapter-nemo-relay`](adapters/nemo-relay/python/README.md) | [`adapters/README.md`](adapters/README.md) |
-| Sinks | [`audr-sink-chargebee`](sinks/chargebee/python/README.md) | [`sinks/README.md`](sinks/README.md) |
 
-## Integrations
+| Part     | Reference implementation                                                                                                       | Guide                                                                                                   |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Core SDK | `[audr](adapters/core/python/README.md)`                                                                                       | `[adapters/core/README.md](adapters/core/README.md)` — the `Client`, the sink contract, delivery states |
+| Adapters | `[audr-adapter-litellm](adapters/litellm/python/README.md)`, `[audr-adapter-nemo-relay](adapters/nemo-relay/python/README.md)` | `[adapters/README.md](adapters/README.md)`                                                              |
 
-Runtime adapters turn framework and router events into records for the same client:
-
-```bash
-pip install "audr-adapter-litellm[runtime]"
-pip install "audr-adapter-nemo-relay[runtime]"
-```
-
-See the [LiteLLM adapter](adapters/litellm/python/README.md) for SDK and Router model
-usage, and the [NeMo Relay adapter](adapters/nemo-relay/python/README.md) for Relay LLM
-and tool scopes.
 
 ## Status
 
@@ -144,13 +138,13 @@ will need. We believe that infrastructure should be open, neutral, and
 community-owned. As adoption grows, the goal is to move cost governance to an
 independent foundation.
 
-Stewarded by Chargebee. Contact us at <audr@chargebee.com>.
+Stewarded by Chargebee. Contact us at [audr@chargebee.com](mailto:audr@chargebee.com).
 
 ## Contributing
 
 Tell us where AUDR breaks for a cost model you have and we haven't imagined.
 [Open an issue](https://github.com/openaudr/audr/issues) or email
-<audr@chargebee.com>. See [CONTRIBUTING.md](CONTRIBUTING.md); participation is governed by
+[audr@chargebee.com](mailto:audr@chargebee.com). See [CONTRIBUTING.md](CONTRIBUTING.md); participation is governed by
 the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Security
