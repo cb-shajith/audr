@@ -8,6 +8,7 @@ on:
   push:
     tags:
       - "audr/v*"
+      - "audr-adapter-litellm/v*"
       - "audr-adapter-nemo-relay/v*"
       - "audr-sink-chargebee/v*"
 
@@ -36,6 +37,7 @@ jobs:
           version="${TAG##*/v}"
           case "$distribution" in
             audr)                    directory=adapters/core/python ;;
+            audr-adapter-litellm)    directory=adapters/litellm/python ;;
             audr-adapter-nemo-relay) directory=adapters/nemo-relay/python ;;
             audr-sink-chargebee)     directory=sinks/chargebee/python ;;
             *) echo "::error::unknown distribution in tag $TAG"; exit 1 ;;

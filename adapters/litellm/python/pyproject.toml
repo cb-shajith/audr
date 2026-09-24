@@ -40,6 +40,7 @@ runtime = [
 Homepage = "https://openaudr.dev"
 Issues = "https://github.com/openaudr/audr/issues"
 Source = "https://github.com/openaudr/audr/tree/main/adapters/litellm/python"
+Changelog = "https://github.com/openaudr/audr/blob/main/adapters/litellm/python/CHANGELOG.md"
 
 [tool.uv.sources]
 audr = { path = "../../core/python", editable = true }
