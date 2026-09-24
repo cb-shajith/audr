@@ -6,6 +6,6 @@ emitted.
 
 | Language | Package | Documentation |
 | --- | --- | --- |
-| Python | `audr-adapter-litellm` | [Install and use](python/README.md) |
+| [Python](python/) | [![PyPI](https://img.shields.io/pypi/v/audr-adapter-litellm?include_prereleases&label=audr-adapter-litellm)](https://pypi.org/project/audr-adapter-litellm/) | [`python/README.md`](python/README.md) — install, what gets recorded, attribution, shutdown order |
 
 Status: experimental.

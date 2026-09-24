@@ -1,5 +1,7 @@
 # LiteLLM adapter for AUDR
 
+[![PyPI](https://img.shields.io/pypi/v/audr-adapter-litellm?include_prereleases)](https://pypi.org/project/audr-adapter-litellm/)
+
 > **Status: experimental.** Public names may change in minor releases until this
 > adapter graduates.
 
