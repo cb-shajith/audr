@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import pytest
 from audr import Attribution
 from litellm.types.llms.openai import (
@@ -69,6 +71,21 @@ def test_cache_and_reasoning_are_excluded_from_base_totals() -> None:
     assert usage.cache_read_tokens == 25
     assert usage.cache_write_tokens == 5
     assert usage.reasoning_tokens == 10
+
+
+@pytest.mark.parametrize(
+    "usage",
+    [
+        {"prompt_tokens": None, "input_tokens": 120, "completion_tokens": 40},
+        SimpleNamespace(prompt_tokens=120, completion_tokens=40),
+    ],
+)
+def test_null_counters_fall_through_and_plain_objects_are_read(usage: object) -> None:
+    llm = _ready(map_result(response_obj=response(usage=usage))).record.usage.llm
+
+    assert llm is not None
+    assert llm.input_tokens == 120
+    assert llm.output_tokens == 40
 
 
 def test_maps_real_responses_api_usage_shape() -> None:

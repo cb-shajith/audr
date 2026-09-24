@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-import math
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import Enum
 from importlib.metadata import PackageNotFoundError, version
-from typing import TypeAlias
+from typing import Annotated, TypeAlias, TypeVar
 
 from audr import (
     AUDR,
@@ -27,7 +26,15 @@ from audr import (
     Usage,
 )
 from audr.ids import uuid7
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import (
+    AliasChoices,
+    AliasPath,
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationError,
+)
 
 from audr_adapter_litellm._errors import LiteLLMRunErrorCode
 
@@ -44,7 +51,7 @@ _GENERATION_CALLS = frozenset(
 )
 _EMBEDDING_CALLS = frozenset({"aembedding", "embedding", "embeddings"})
 _RERANK_CALLS = frozenset({"arerank", "rerank"})
-_ATTRIBUTION_FIELDS = frozenset(Attribution.model_fields)
+_ATTRIBUTION_FIELDS = set(Attribution.model_fields)
 _MISSING = object()
 
 
@@ -74,6 +81,84 @@ class _AudrMetadata(BaseModel):
     attribution: Attribution | None = None
     run: _RunMetadata = _RunMetadata()
     resource: _ResourceMetadata = _ResourceMetadata()
+
+
+_Count: TypeAlias = Annotated[int, Field(ge=0, strict=True)]
+_AMOUNT: TypeAdapter[float] = TypeAdapter(
+    Annotated[float, Field(ge=0, allow_inf_nan=False, strict=True)]
+)
+_Parsed = TypeVar("_Parsed", bound=BaseModel)
+
+
+def _alias(*choices: str | tuple[str, str]) -> AliasChoices:
+    return AliasChoices(*(AliasPath(*c) if isinstance(c, tuple) else c for c in choices))
+
+
+class _TokenUsage(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    input_total: _Count | None = Field(
+        None, validation_alias=_alias("prompt_tokens", "input_tokens")
+    )
+    output_total: _Count | None = Field(
+        None, validation_alias=_alias("completion_tokens", "output_tokens")
+    )
+    total: _Count | None = Field(None, validation_alias="total_tokens")
+    cache_read: _Count | None = Field(
+        None,
+        validation_alias=_alias(
+            "cache_read_input_tokens",
+            ("prompt_tokens_details", "cached_tokens"),
+            ("input_tokens_details", "cached_tokens"),
+        ),
+    )
+    cache_write: _Count | None = Field(
+        None,
+        validation_alias=_alias(
+            "cache_creation_input_tokens",
+            ("prompt_tokens_details", "cache_creation_tokens"),
+            ("input_tokens_details", "cache_creation_tokens"),
+        ),
+    )
+    reasoning: _Count | None = Field(
+        None,
+        validation_alias=_alias(
+            ("completion_tokens_details", "reasoning_tokens"),
+            ("output_tokens_details", "reasoning_tokens"),
+            "reasoning_tokens",
+        ),
+    )
+
+
+class _RerankMeta(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    input_tokens: _Count | None = Field(None, validation_alias=AliasPath("tokens", "input_tokens"))
+    output_tokens: _Count | None = Field(
+        None, validation_alias=AliasPath("tokens", "output_tokens")
+    )
+    billed_total: _Count | None = Field(
+        None, validation_alias=AliasPath("billed_units", "total_tokens")
+    )
+    search_units: _Count | None = Field(
+        None, validation_alias=AliasPath("billed_units", "search_units")
+    )
+
+
+def _parse(model: type[_Parsed], value: object, root: str) -> _Parsed | RecordMalformed:
+    try:
+        return model.model_validate(_compact(value))
+    except ValidationError as error:
+        loc = error.errors(include_url=False, include_input=False)[0]["loc"]
+        return RecordMalformed(root + "".join(f"/{part}" for part in loc))
+
+
+def _compact(value: object) -> object:
+    if isinstance(value, BaseModel):
+        value = value.model_dump(warnings=False)
+    if isinstance(value, Mapping):
+        return {key: _compact(item) for key, item in value.items() if item is not None}
+    return value
 
 
 @dataclass(frozen=True, slots=True)
@@ -211,14 +296,9 @@ def _resolve_attribution(
     defaults: Attribution,
     overrides: Attribution | None,
 ) -> Attribution | RecordSkipped:
-    values: dict[str, object] = {
-        name: getattr(defaults, name)
-        for name in _ATTRIBUTION_FIELDS
-        if getattr(defaults, name) is not None
-    }
+    values = defaults.model_dump(include=_ATTRIBUTION_FIELDS, exclude_none=True)
     if overrides is not None:
-        for name in overrides.model_fields_set:
-            values[name] = getattr(overrides, name)
+        values |= overrides.model_dump(include=_ATTRIBUTION_FIELDS, exclude_unset=True)
     try:
         attribution = Attribution.model_validate(values)
     except ValidationError:
@@ -257,88 +337,17 @@ def _usage_from(
 
 
 def _standard_usage_from(usage: object) -> LlmUsage | RecordMalformed | None:
-    input_total = _first_counter(
-        (
-            (usage, "prompt_tokens", "/usage/prompt_tokens"),
-            (usage, "input_tokens", "/usage/input_tokens"),
-        )
-    )
-    output_total = _first_counter(
-        (
-            (usage, "completion_tokens", "/usage/completion_tokens"),
-            (usage, "output_tokens", "/usage/output_tokens"),
-        )
-    )
-    total = _counter(usage, "total_tokens", "/usage/total_tokens")
-    for value in (input_total, output_total, total):
-        if isinstance(value, RecordMalformed):
-            return value
-
-    prompt_details = _field(usage, "prompt_tokens_details")
-    input_details = _field(usage, "input_tokens_details")
-    completion_details = _field(usage, "completion_tokens_details")
-    output_details = _field(usage, "output_tokens_details")
-    cache_read = _first_counter(
-        (
-            (usage, "cache_read_input_tokens", "/usage/cache_read_input_tokens"),
-            (prompt_details, "cached_tokens", "/usage/prompt_tokens_details/cached_tokens"),
-            (input_details, "cached_tokens", "/usage/input_tokens_details/cached_tokens"),
-        )
-    )
-    cache_write = _first_counter(
-        (
-            (usage, "cache_creation_input_tokens", "/usage/cache_creation_input_tokens"),
-            (
-                prompt_details,
-                "cache_creation_tokens",
-                "/usage/prompt_tokens_details/cache_creation_tokens",
-            ),
-            (
-                input_details,
-                "cache_creation_tokens",
-                "/usage/input_tokens_details/cache_creation_tokens",
-            ),
-        )
-    )
-    reasoning = _first_counter(
-        (
-            (
-                completion_details,
-                "reasoning_tokens",
-                "/usage/completion_tokens_details/reasoning_tokens",
-            ),
-            (
-                output_details,
-                "reasoning_tokens",
-                "/usage/output_tokens_details/reasoning_tokens",
-            ),
-            (usage, "reasoning_tokens", "/usage/reasoning_tokens"),
-        )
-    )
-    for value in (cache_read, cache_write, reasoning):
-        if isinstance(value, RecordMalformed):
-            return value
-
-    input_total_count = _counter_value(input_total)
-    output_total_count = _counter_value(output_total)
-    cache_read_count = _counter_value(cache_read)
-    cache_write_count = _counter_value(cache_write)
-    reasoning_count = _counter_value(reasoning)
-    evidence = any(
-        _counter_present(value)
-        for value in (input_total, output_total, total, cache_read, cache_write, reasoning)
-    )
-    if not evidence:
+    parsed = _parse(_TokenUsage, usage, "/usage")
+    if isinstance(parsed, RecordMalformed):
+        return parsed
+    if not parsed.model_fields_set:
         return None
-
-    input_tokens = _exclusive(input_total_count, cache_read_count, cache_write_count)
-    output_tokens = _exclusive(output_total_count, reasoning_count)
     return LlmUsage(
-        input_tokens=input_tokens,
-        output_tokens=output_tokens,
-        cache_read_tokens=cache_read_count,
-        cache_write_tokens=cache_write_count,
-        reasoning_tokens=reasoning_count,
+        input_tokens=_exclusive(parsed.input_total, parsed.cache_read, parsed.cache_write),
+        output_tokens=_exclusive(parsed.output_total, parsed.reasoning),
+        cache_read_tokens=parsed.cache_read,
+        cache_write_tokens=parsed.cache_write,
+        reasoning_tokens=parsed.reasoning,
         requests=1,
     )
 
@@ -347,43 +356,21 @@ def _rerank_usage_from(response: object) -> LlmUsage | RecordMalformed | None:
     meta = _field(response, "meta")
     if meta is _MISSING or meta is None:
         return None
-    tokens = _field(meta, "tokens")
-    billed_units = _field(meta, "billed_units")
-    input_tokens = _counter(tokens, "input_tokens", "/meta/tokens/input_tokens")
-    output_tokens = _counter(tokens, "output_tokens", "/meta/tokens/output_tokens")
-    billed_total = _counter(
-        billed_units,
-        "total_tokens",
-        "/meta/billed_units/total_tokens",
-    )
-    search_units = _counter(
-        billed_units,
-        "search_units",
-        "/meta/billed_units/search_units",
-    )
-    for value in (input_tokens, output_tokens, billed_total, search_units):
-        if isinstance(value, RecordMalformed):
-            return value
-    if not any(
-        _counter_present(value)
-        for value in (input_tokens, output_tokens, billed_total, search_units)
-    ):
+    parsed = _parse(_RerankMeta, meta, "/meta")
+    if isinstance(parsed, RecordMalformed):
+        return parsed
+    if not parsed.model_fields_set:
         return None
-
-    input_count = _counter_value(input_tokens)
-    output_count = _counter_value(output_tokens)
-    if input_count is None:
-        total_count = _counter_value(billed_total)
-        if total_count is not None:
-            input_count = max(0, total_count - (output_count or 0))
+    input_count = parsed.input_tokens
+    if input_count is None and parsed.billed_total is not None:
+        input_count = max(0, parsed.billed_total - (parsed.output_tokens or 0))
     values: dict[str, object] = {
         "input_tokens": input_count,
-        "output_tokens": output_count,
+        "output_tokens": parsed.output_tokens,
         "requests": 1,
     }
-    search_count = _counter_value(search_units)
-    if search_count is not None:
-        values["x_search_units"] = search_count
+    if parsed.search_units is not None:
+        values["x_search_units"] = parsed.search_units
     return LlmUsage.model_validate(values)
 
 
@@ -393,23 +380,14 @@ def _cost_from(
 ) -> tuple[Cost | None, bool] | RecordMalformed:
     raw = kwargs.get("response_cost", _MISSING)
     if raw is _MISSING or raw is None:
-        hidden = _field(response, "_hidden_params")
-        raw = _field(hidden, "response_cost")
+        raw = _field(_field(response, "_hidden_params"), "response_cost")
     if raw is _MISSING or raw is None:
         return None, False
-    if isinstance(raw, bool) or not isinstance(raw, int | float):
+    try:
+        amount = _AMOUNT.validate_python(raw)
+    except ValidationError:
         return RecordMalformed("/response_cost")
-    amount = float(raw)
-    if not math.isfinite(amount) or amount < 0:
-        return RecordMalformed("/response_cost")
-    return (
-        Cost(
-            total_cost=amount,
-            currency="USD",
-            llm=LlmCost(total_token_cost=amount),
-        ),
-        True,
-    )
+    return Cost(total_cost=amount, currency="USD", llm=LlmCost(total_token_cost=amount)), True
 
 
 def _provider_from(kwargs: Mapping[object, object]) -> str | None:
@@ -496,39 +474,6 @@ def _field(value: object, name: str) -> object:
     if isinstance(value, Mapping):
         return value.get(name, _MISSING)
     return getattr(value, name, _MISSING)
-
-
-def _counter(
-    value: object,
-    name: str,
-    path: str,
-) -> tuple[bool, int | None] | RecordMalformed:
-    raw = _field(value, name)
-    if raw is _MISSING or raw is None:
-        return False, None
-    if isinstance(raw, bool) or not isinstance(raw, int) or raw < 0:
-        return RecordMalformed(path)
-    return True, raw
-
-
-def _first_counter(
-    candidates: tuple[tuple[object, str, str], ...],
-) -> tuple[bool, int | None] | RecordMalformed:
-    for value, name, path in candidates:
-        result = _counter(value, name, path)
-        if isinstance(result, RecordMalformed) or result[0]:
-            return result
-    return False, None
-
-
-def _counter_present(value: tuple[bool, int | None] | RecordMalformed) -> bool:
-    return not isinstance(value, RecordMalformed) and value[0]
-
-
-def _counter_value(value: tuple[bool, int | None] | RecordMalformed) -> int | None:
-    if isinstance(value, RecordMalformed):
-        return None
-    return value[1]
 
 
 def _exclusive(total: int | None, *parts: int | None) -> int | None:
