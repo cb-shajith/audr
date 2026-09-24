@@ -7,7 +7,7 @@ from typing import Any
 
 from audr import Attribution
 
-from audr_adapter_litellm._mapping import MappingResult, map_callback
+from audr_adapter_litellm._mapping import MappingResult, RecordReady, map_callback
 
 START = datetime(2026, 9, 21, 12, 0, tzinfo=UTC)
 END = START + timedelta(milliseconds=125)
@@ -55,3 +55,9 @@ def map_result(
         attribution_defaults=defaults or Attribution(environment="test"),
         failed=failed,
     )
+
+
+def ready(result: object) -> RecordReady:
+    assert isinstance(result, RecordReady)
+    assert result.record.validate() == []
+    return result

@@ -8,6 +8,9 @@ import threading
 from typing import cast
 
 import pytest
+
+pytest.importorskip("litellm")
+
 from audr import AUDR, Attribution, Client, SubmitOutcome, SubmitResult
 
 from audr_adapter_litellm import (
@@ -17,6 +20,8 @@ from audr_adapter_litellm import (
     _callback,
 )
 from tests.helpers import END, START, callback_kwargs, response
+
+pytestmark = pytest.mark.litellm
 
 
 class _Client:

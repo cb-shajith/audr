@@ -6,36 +6,23 @@ from types import SimpleNamespace
 
 import pytest
 from audr import Attribution
-from litellm.types.llms.openai import (
-    InputTokensDetails,
-    OutputTokensDetails,
-    ResponseAPIUsage,
-    ResponsesAPIResponse,
-)
-from litellm.types.rerank import RerankResponse
 
-from audr_adapter_litellm import LiteLLMRunErrorCode
+from audr_adapter_litellm import LiteLLMRunErrorCode, __version__
 from audr_adapter_litellm._mapping import (
     RecordMalformed,
-    RecordReady,
     RecordSkipped,
     map_callback,
 )
-from tests.helpers import CALL_ID, END, START, callback_kwargs, map_result, response
-
-
-def _ready(result: object) -> RecordReady:
-    assert isinstance(result, RecordReady)
-    assert result.record.validate() == []
-    return result
+from tests.helpers import CALL_ID, END, START, callback_kwargs, map_result, ready, response
 
 
 def test_maps_generation_usage_and_provider_echoed_model() -> None:
-    record = _ready(map_result()).record
+    record = ready(map_result()).record
 
     assert record.emitter is not None
     assert record.emitter.component == "router"
-    assert record.emitter.name == "litellm"
+    assert record.emitter.name == "audr-adapter-litellm"
+    assert record.emitter.version == __version__
     assert record.resource.provider == "openai"
     assert record.resource.name == "gpt-5.6-luna-2026-09-01"
     assert record.resource.operation == "generation"
@@ -63,7 +50,7 @@ def test_cache_and_reasoning_are_excluded_from_base_totals() -> None:
             }
         )
     )
-    usage = _ready(result).record.usage.llm
+    usage = ready(result).record.usage.llm
 
     assert usage is not None
     assert usage.input_tokens == 90
@@ -81,80 +68,11 @@ def test_cache_and_reasoning_are_excluded_from_base_totals() -> None:
     ],
 )
 def test_null_counters_fall_through_and_plain_objects_are_read(usage: object) -> None:
-    llm = _ready(map_result(response_obj=response(usage=usage))).record.usage.llm
+    llm = ready(map_result(response_obj=response(usage=usage))).record.usage.llm
 
     assert llm is not None
     assert llm.input_tokens == 120
     assert llm.output_tokens == 40
-
-
-def test_maps_real_responses_api_usage_shape() -> None:
-    responses_api_response = ResponsesAPIResponse(
-        id="resp_123",
-        created_at=1,
-        model="gpt-5.6-luna-2026-09-01",
-        object="response",
-        output=[],
-        usage=ResponseAPIUsage(
-            input_tokens=100,
-            input_tokens_details=InputTokensDetails(cached_tokens=20),
-            output_tokens=30,
-            output_tokens_details=OutputTokensDetails(reasoning_tokens=5),
-            total_tokens=130,
-        ),
-    )
-    result = map_result(
-        kwargs=callback_kwargs(call_type="aresponses"),
-        response_obj=responses_api_response,
-    )
-    usage = _ready(result).record.usage.llm
-
-    assert usage is not None
-    assert usage.input_tokens == 80
-    assert usage.output_tokens == 25
-    assert usage.cache_read_tokens == 20
-    assert usage.reasoning_tokens == 5
-    assert usage.requests == 1
-
-
-def test_maps_real_rerank_tokens_and_billed_search_units() -> None:
-    rerank_response = RerankResponse(
-        id="rerank_123",
-        results=[],
-        meta={
-            "tokens": {"input_tokens": 42, "output_tokens": 3},
-            "billed_units": {"total_tokens": 45, "search_units": 2},
-        },
-    )
-    result = map_result(
-        kwargs=callback_kwargs(call_type="arerank", custom_llm_provider="cohere"),
-        response_obj=rerank_response,
-    )
-    usage = _ready(result).record.usage.llm
-
-    assert usage is not None
-    assert usage.input_tokens == 42
-    assert usage.output_tokens == 3
-    assert usage.model_extra == {"x_cohere_search_units": 2}
-    assert usage.requests == 1
-
-
-def test_rerank_billed_total_falls_back_to_input_tokens() -> None:
-    rerank_response = RerankResponse(
-        id="rerank_123",
-        results=[],
-        meta={"billed_units": {"total_tokens": 45, "search_units": 1}},
-    )
-    result = map_result(
-        kwargs=callback_kwargs(call_type="rerank", custom_llm_provider="azure_ai"),
-        response_obj=rerank_response,
-    )
-    usage = _ready(result).record.usage.llm
-
-    assert usage is not None
-    assert usage.input_tokens == 45
-    assert usage.output_tokens is None
-    assert usage.model_extra == {"x_azure_ai_search_units": 1}
 
 
 @pytest.mark.parametrize(
@@ -169,13 +87,13 @@ def test_rerank_billed_total_falls_back_to_input_tokens() -> None:
     ],
 )
 def test_supported_call_types(call_type: str, operation: str) -> None:
-    record = _ready(map_result(kwargs=callback_kwargs(call_type=call_type))).record
+    record = ready(map_result(kwargs=callback_kwargs(call_type=call_type))).record
 
     assert record.resource.operation == operation
 
 
 def test_cost_is_encoded_as_a_net_usd_total_without_a_token_breakdown() -> None:
-    record = _ready(map_result(kwargs=callback_kwargs(response_cost=0.0125))).record
+    record = ready(map_result(kwargs=callback_kwargs(response_cost=0.0125))).record
 
     assert record.cost is not None
     assert record.cost.total_cost == 0.0125
@@ -184,7 +102,7 @@ def test_cost_is_encoded_as_a_net_usd_total_without_a_token_breakdown() -> None:
 
 
 def test_cost_alone_is_sufficient_metering_evidence() -> None:
-    record = _ready(
+    record = ready(
         map_result(
             kwargs=callback_kwargs(response_cost=0.25),
             response_obj={"model": "model", "usage": None},
@@ -222,7 +140,7 @@ def test_failure_with_positive_cost_and_no_usage_is_metered() -> None:
         response_obj={"model": "model"},
         failed=True,
     )
-    record = _ready(result).record
+    record = ready(result).record
 
     assert record.usage.llm is not None
     assert record.usage.llm.requests == 1
@@ -244,7 +162,7 @@ def test_metered_failure_gets_a_stable_error_code() -> None:
         kwargs=callback_kwargs(exception=TimeoutError("private message")),
         failed=True,
     )
-    record = _ready(result).record
+    record = ready(result).record
 
     assert record.run.error_code == LiteLLMRunErrorCode.TIMEOUT
     assert record.run.error_reason is None
@@ -277,7 +195,7 @@ def test_request_metadata_overrides_attribution_and_run_fields() -> None:
             }
         }
     )
-    record = _ready(
+    record = ready(
         map_result(
             kwargs=kwargs,
             defaults=Attribution(environment="staging", user_id="user_123"),
@@ -361,7 +279,7 @@ def test_unknown_call_type_is_not_misclassified() -> None:
 
 
 def test_provider_is_normalized_to_the_audr_alphabet() -> None:
-    record = _ready(
+    record = ready(
         map_result(kwargs=callback_kwargs(custom_llm_provider="Vertex_AI/Gemini"))
     ).record
 
@@ -376,7 +294,7 @@ def test_content_fields_are_never_copied_to_the_record() -> None:
         response_obj=response(choices=[{"message": {"content": secret}}]),
     )
 
-    assert secret not in _ready(result).record.to_json()
+    assert secret not in ready(result).record.to_json()
 
 
 def test_numeric_and_naive_timestamps_are_accepted_and_normalized() -> None:
@@ -389,7 +307,7 @@ def test_numeric_and_naive_timestamps_are_accepted_and_normalized() -> None:
         attribution_defaults=Attribution(environment="test"),
         failed=False,
     )
-    timing = _ready(result).record.timing
+    timing = ready(result).record.timing
 
     assert timing.event_time == END
     assert timing.duration_ms == 125

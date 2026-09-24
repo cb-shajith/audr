@@ -7,7 +7,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import Enum
-from importlib.metadata import PackageNotFoundError, version
 from typing import Annotated, TypeAlias, TypeVar
 
 from audr import (
@@ -36,7 +35,9 @@ from pydantic import (
 )
 
 from audr_adapter_litellm._errors import LiteLLMRunErrorCode
+from audr_adapter_litellm._version import __version__
 
+_EMITTER_NAME = "audr-adapter-litellm"
 _PROVIDER_DISALLOWED = re.compile(r"[^a-z0-9-]+")
 _GENERATION_CALLS = frozenset(
     {
@@ -258,11 +259,7 @@ def map_callback(
 
     usage = usage_result or LlmUsage(requests=1)
     record = AUDR(
-        emitter=Emitter(
-            component="router",
-            name="litellm",
-            version=_litellm_version(),
-        ),
+        emitter=Emitter(component="router", name=_EMITTER_NAME, version=__version__),
         timing=timing,
         resource=resource,
         usage=Usage(llm=usage),
@@ -508,13 +505,6 @@ def _datetime(value: object) -> datetime | None:
 
 def _non_empty(value: object) -> str | None:
     return value if isinstance(value, str) and value else None
-
-
-def _litellm_version() -> str:
-    try:
-        return version("litellm")
-    except PackageNotFoundError:
-        return "unknown"
 
 
 __all__ = [
