@@ -5,6 +5,7 @@
 [![Core SDK (TypeScript)](https://github.com/openaudr/audr/actions/workflows/adapter-core-typescript-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/adapter-core-typescript-verify.yml)
 [![NeMo Relay adapter](https://github.com/openaudr/audr/actions/workflows/adapter-nemo-relay-python-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/adapter-nemo-relay-python-verify.yml)
 [![Chargebee sink](https://github.com/openaudr/audr/actions/workflows/sink-chargebee-python-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/sink-chargebee-python-verify.yml)
+[![Chargebee sink (TypeScript)](https://github.com/openaudr/audr/actions/workflows/sink-chargebee-typescript-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/sink-chargebee-typescript-verify.yml)
 [![Docs](https://github.com/openaudr/audr/actions/workflows/docs-verify.yml/badge.svg)](https://github.com/openaudr/audr/actions/workflows/docs-verify.yml)
 
 [![Spec v1.0.0](https://img.shields.io/badge/spec-v1.0.0-blue)](spec/SPEC.md)
@@ -122,7 +123,7 @@ asyncio.run(main())
 | --- | --- | --- |
 | Core SDK | [`audr`](adapters/core/python/README.md) (Python), [`audr`](adapters/core/typescript/README.md) (TypeScript) | [`adapters/core/README.md`](adapters/core/README.md) — the `Client`, the sink contract, delivery states |
 | Adapters | [`audr-adapter-nemo-relay`](adapters/nemo-relay/python/README.md) | [`adapters/README.md`](adapters/README.md) |
-| Sinks | [`audr-sink-chargebee`](sinks/chargebee/python/README.md) | [`sinks/README.md`](sinks/README.md) |
+| Sinks | [`audr-sink-chargebee`](sinks/chargebee/python/README.md) (Python), [`audr-sink-chargebee`](sinks/chargebee/typescript/README.md) (TypeScript) | [`sinks/README.md`](sinks/README.md) |
 
 ## Status
 

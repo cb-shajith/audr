@@ -24,7 +24,7 @@ it must not carry at the point it is built.
 
 | Sink | Directory | Distribution |
 | --- | --- | --- |
-| Chargebee | [`chargebee/`](chargebee/) | [![PyPI](https://img.shields.io/pypi/v/audr-sink-chargebee?include_prereleases&label=audr-sink-chargebee)](https://pypi.org/project/audr-sink-chargebee/) |
+| Chargebee | [`chargebee/`](chargebee/) | [![PyPI](https://img.shields.io/pypi/v/audr-sink-chargebee?include_prereleases&label=audr-sink-chargebee)](https://pypi.org/project/audr-sink-chargebee/) [![npm](https://img.shields.io/npm/v/audr-sink-chargebee?include_prereleases&label=audr-sink-chargebee)](https://www.npmjs.com/package/audr-sink-chargebee) |
 
 ## Contributing
 

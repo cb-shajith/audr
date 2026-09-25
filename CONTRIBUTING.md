@@ -51,6 +51,7 @@ make all         # check + python + typescript: everything CI runs
 | `make adapter-nemo-relay-python` | `make lint test` in `adapters/nemo-relay/python` |
 | `make sink-chargebee-python` | `make lint test` in `sinks/chargebee/python` |
 | `make core-typescript` | `make install verify` in `adapters/core/typescript` |
+| `make sink-chargebee-typescript` | `make install verify` in `sinks/chargebee/typescript` |
 
 ## Where a change belongs
 

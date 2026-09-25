@@ -27,6 +27,7 @@ identity and attribution that records from different systems join.
 | `adapters/nemo-relay/python/` | [`adapters/nemo-relay/python/AGENTS.md`](adapters/nemo-relay/python/AGENTS.md) |
 | `sinks/` | [`sinks/AGENTS.md`](sinks/AGENTS.md) |
 | `sinks/chargebee/python/` | [`sinks/chargebee/python/AGENTS.md`](sinks/chargebee/python/AGENTS.md) |
+| `sinks/chargebee/typescript/` | [`sinks/chargebee/typescript/AGENTS.md`](sinks/chargebee/typescript/AGENTS.md) |
 
 ## Invariants
 

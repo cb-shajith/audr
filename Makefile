@@ -1,6 +1,6 @@
 .PHONY: help spec check schema examples conformance lint fresh links versions install clean all
 .PHONY: python core-python adapter-nemo-relay-python sink-chargebee-python
-.PHONY: typescript core-typescript
+.PHONY: typescript core-typescript sink-chargebee-typescript
 
 PYTHON ?= python3
 
@@ -54,7 +54,10 @@ python: core-python adapter-nemo-relay-python sink-chargebee-python ## Verify ev
 core-typescript: ## Verify the core TypeScript SDK (adapters/core/typescript)
 	@$(MAKE) -C adapters/core/typescript install verify
 
-typescript: core-typescript ## Verify every TypeScript package
+sink-chargebee-typescript: ## Verify the Chargebee TypeScript sink (sinks/chargebee/typescript)
+	@$(MAKE) -C sinks/chargebee/typescript install verify
+
+typescript: core-typescript sink-chargebee-typescript ## Verify every TypeScript package
 
 all: check python typescript ## Everything CI runs, across the repository
 

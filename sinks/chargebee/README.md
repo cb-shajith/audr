@@ -8,6 +8,8 @@ site's usage-ingest batch endpoint, for Chargebee Usage-Based Billing. Chargebee
 | Language | Distribution | Package guide |
 | --- | --- | --- |
 | [Python](python/) | [![PyPI](https://img.shields.io/pypi/v/audr-sink-chargebee?include_prereleases&label=audr-sink-chargebee)](https://pypi.org/project/audr-sink-chargebee/) | [`python/README.md`](python/README.md) — install, configuration, routing and delivery semantics, data handling |
+| [TypeScript](typescript/) | [![npm](https://img.shields.io/npm/v/audr-sink-chargebee?include_prereleases&label=audr-sink-chargebee)](https://www.npmjs.com/package/audr-sink-chargebee) | [`typescript/README.md`](typescript/README.md) — install, configuration, routing and delivery semantics, data handling |
 
-To contribute a change, see [`python/AGENTS.md`](python/AGENTS.md). To contribute a new
+To contribute a change, see [`python/AGENTS.md`](python/AGENTS.md) or
+[`typescript/AGENTS.md`](typescript/AGENTS.md). To contribute a new
 sink, see [`../CONTRIBUTING.md`](../CONTRIBUTING.md).
