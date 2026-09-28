@@ -1,4 +1,10 @@
-import { type AudrRecord, BatchResult, type Logger, type Sink } from '../src/index.js';
+import {
+  type AudrRecord,
+  BatchResult,
+  type DeliverOptions,
+  type Logger,
+  type Sink,
+} from '../src/index.js';
 
 export const EMITTER = { component: 'harness', name: 'test-harness', version: '1.0.0' } as const;
 
@@ -15,11 +21,13 @@ export function recordingLogger(): Logger & { lines: string[] } {
 /** A sink whose every `deliver()` stays pending until the test answers it. */
 export class ControlledSink implements Sink {
   readonly batches: (readonly AudrRecord[])[] = [];
+  readonly signals: (AbortSignal | undefined)[] = [];
   readonly #pending: ((result: BatchResult) => void)[] = [];
   closed = 0;
 
-  deliver(batch: readonly AudrRecord[]): Promise<BatchResult> {
+  deliver(batch: readonly AudrRecord[], options?: DeliverOptions): Promise<BatchResult> {
     this.batches.push(batch);
+    this.signals.push(options?.signal);
     return new Promise((resolve) => this.#pending.push(resolve));
   }
 

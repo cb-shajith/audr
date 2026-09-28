@@ -47,6 +47,9 @@ export class Pipeline {
   #drainers = 0;
   #stopped = false;
   #idleWaiters: (() => void)[] = [];
+  readonly #abort = new AbortController();
+  /** Promises returned by callbacks that have not settled yet; each resolves, never rejects. */
+  readonly #callbacks = new Set<Promise<void>>();
   #submitted = 0;
   #sent = 0;
   #dropped = 0;
@@ -90,14 +93,25 @@ export class Pipeline {
     return this.#stopped ? true : this.#drain(timeoutMs);
   }
 
-  /** Deliver what fits in `timeoutMs`, account for the rest, then close an owned sink. */
+  /** Report a record `Client.record()` rejected as invalid to `onFailure`. */
+  reportInvalid(record: AudrRecord): void {
+    this.#notifyFailure(record, 'dropped', 'invalid', false);
+  }
+
+  /**
+   * Deliver what fits in `timeoutMs`, abort and account for the rest, wait for pending
+   * callbacks within the same bound, then close an owned sink.
+   */
   async stop(timeoutMs: number): Promise<void> {
     this.#stopped = true;
+    const deadline = Date.now() + timeoutMs;
     try {
       await this.#drain(timeoutMs);
     } finally {
       clearTimeout(this.#lingerTimer);
+      this.#abort.abort();
       this.#abandonOutstanding();
+      await this.#settleCallbacks(Math.max(0, deadline - Date.now()));
       if (this.#options.ownsSink) {
         try {
           await this.#sink.close();
@@ -157,7 +171,7 @@ export class Pipeline {
     for (const item of batch) this.#inFlight.add(item);
     let thrown: string | undefined;
     try {
-      const result = await this.#sink.deliver(records);
+      const result = await this.#sink.deliver(records, { signal: this.#abort.signal });
       if (batch.some((item) => item.state === 'in_flight')) {
         this.#batches += 1;
         this.#apply(batch, result);
@@ -215,27 +229,26 @@ export class Pipeline {
   async #drain(timeoutMs: number): Promise<boolean> {
     this.#drainers += 1;
     this.#schedule();
-    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      const idle = new Promise<boolean>((resolve) => {
+      const idle = new Promise<void>((resolve) => {
         if (!this.#delivering && this.#queue.length === 0) {
-          resolve(true);
+          resolve();
         } else {
-          this.#idleWaiters.push(() => {
-            resolve(true);
-          });
+          this.#idleWaiters.push(resolve);
         }
       });
-      // A bound too long for a timer is no bound at all.
-      const expired = new Promise<boolean>((resolve) => {
-        if (timeoutMs > MAX_TIMER_MS) return;
-        timer = setTimeout(resolve, timeoutMs, false);
-        unref(timer);
-      });
-      return await Promise.race([idle, expired]);
+      return await settlesWithin(idle, timeoutMs);
     } finally {
-      clearTimeout(timer);
       this.#drainers -= 1;
+    }
+  }
+
+  async #settleCallbacks(timeoutMs: number): Promise<void> {
+    if (this.#callbacks.size === 0) return;
+    if (!(await settlesWithin(Promise.all(this.#callbacks), timeoutMs))) {
+      this.#options.logger.warn(
+        `audr: shutdown left ${this.#callbacks.size} callback(s) unsettled`,
+      );
     }
   }
 
@@ -285,25 +298,58 @@ export class Pipeline {
     retryable: boolean,
     detail?: string,
   ): void {
-    const { onFailure, logger } = this.#options;
+    const { onFailure } = this.#options;
     if (onFailure === undefined) return;
-    try {
-      onFailure({ record, disposition, reason, retryable, detail });
-    } catch (error) {
-      logger.warn(`audr: onFailure callback threw (${errorName(error)})`);
-    }
+    this.#invoke('onFailure', () => onFailure({ record, disposition, reason, retryable, detail }));
   }
 
   #notifyDelivered(batch: readonly InFlight[]): void {
-    const { onDelivered, logger } = this.#options;
+    const { onDelivered } = this.#options;
     const sent = batch.filter((item) => item.state === 'sent').map((item) => item.record);
     if (onDelivered === undefined || sent.length === 0) return;
+    this.#invoke('onDelivered', () => onDelivered(sent));
+  }
+
+  /** Run a callback without awaiting it, logging whatever it throws or rejects with. */
+  #invoke(name: 'onFailure' | 'onDelivered', callback: () => unknown): void {
+    const report = (error: unknown): void => {
+      this.#options.logger.warn(`audr: ${name} callback threw (${errorName(error)})`);
+    };
     try {
-      onDelivered(sent);
+      const result = callback();
+      if (!isThenable(result)) return;
+      const pending: Promise<void> = Promise.resolve(result)
+        .then(() => undefined, report)
+        .finally(() => {
+          this.#callbacks.delete(pending);
+        });
+      this.#callbacks.add(pending);
     } catch (error) {
-      logger.warn(`audr: onDelivered callback threw (${errorName(error)})`);
+      report(error);
     }
   }
+}
+
+/**
+ * Whether `work` settles within `timeoutMs`. A bound too long for a timer is no bound at
+ * all, and the timer does not keep the process alive.
+ */
+async function settlesWithin(work: Promise<unknown>, timeoutMs: number): Promise<boolean> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expired = new Promise<boolean>((resolve) => {
+    if (timeoutMs > MAX_TIMER_MS) return;
+    timer = setTimeout(resolve, timeoutMs, false);
+    unref(timer);
+  });
+  try {
+    return await Promise.race([work.then(() => true), expired]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function isThenable(value: unknown): value is PromiseLike<unknown> {
+  return typeof (value as { then?: unknown } | null | undefined)?.then === 'function';
 }
 
 /** Stop a timer that only bounds real work from keeping the process alive, where supported. */

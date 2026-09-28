@@ -176,6 +176,17 @@ describe('Client.record', () => {
     expect(logger.lines).toContain('audr: onFailure callback threw (TypeError)');
   });
 
+  it('survives an onFailure callback whose promise rejects', async () => {
+    const logger = recordingLogger();
+    const audr = client(new MemorySink(), {
+      logger,
+      onFailure: () => Promise.reject(new TypeError('boom')),
+    });
+    expect(audr.record(makeRecord({ attribution: {} })).outcome).toBe('rejected_invalid');
+    await settle();
+    expect(logger.lines).toContain('audr: onFailure callback threw (TypeError)');
+  });
+
   it('drops records after shutdown without counting them', async () => {
     const audr = client(new MemorySink());
     await audr.shutdown();

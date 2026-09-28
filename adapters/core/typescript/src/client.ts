@@ -25,9 +25,16 @@ export interface ClientOptions {
   readonly batchMaxSize?: number | undefined;
   /** How long a partial batch waits for more records, at most 2147483647. Default 5000. */
   readonly lingerMs?: number | undefined;
-  /** Called synchronously for every record that ends `dropped` or `unknown`. */
+  /**
+   * Called synchronously for every record that ends `dropped` or `unknown`. A returned
+   * promise is not awaited on the delivery path; `shutdown()` waits for it within its bound.
+   */
   readonly onFailure?: FailureCallback | undefined;
-  /** Called synchronously once per accepted batch with the records the sink accepted. */
+  /**
+   * Called synchronously once per accepted batch with the records the sink accepted. A
+   * returned promise is not awaited on the delivery path; `shutdown()` waits for it within
+   * its bound.
+   */
   readonly onDelivered?: DeliveredCallback | undefined;
   /**
    * The clock `timing.event_time` is checked against. Default `() => new Date()`, which is
@@ -56,7 +63,6 @@ export class Client implements AsyncDisposable {
   readonly #pipeline: Pipeline;
   readonly #emitter: Emitter | undefined;
   readonly #clock: (() => Date) | undefined;
-  readonly #onFailure: FailureCallback | undefined;
   readonly #logger: Logger;
   #shutdown: Promise<void> | undefined;
 
@@ -83,7 +89,6 @@ export class Client implements AsyncDisposable {
     }
     this.#emitter = options.emitter;
     this.#clock = options.clock;
-    this.#onFailure = options.onFailure;
     this.#logger = safeLogger(logger);
     this.#pipeline = new Pipeline(sink, {
       maxQueueSize,
@@ -126,7 +131,7 @@ export class Client implements AsyncDisposable {
     }
     this.#logger.warn(`audr: record rejected, ${issues.length} validation issue(s)`);
     if (wellFormed) {
-      this.#notifyInvalid(copy);
+      this.#pipeline.reportInvalid(copy);
     }
     return { outcome: 'rejected_invalid', queued: false, issues };
   }
@@ -173,19 +178,6 @@ export class Client implements AsyncDisposable {
       this.#logger.warn(`audr: clock threw (${errorName(error)}), using the system clock`);
     }
     return undefined;
-  }
-
-  #notifyInvalid(record: AudrRecord): void {
-    try {
-      this.#onFailure?.({
-        record,
-        disposition: 'dropped',
-        reason: 'invalid',
-        retryable: false,
-      });
-    } catch (error) {
-      this.#logger.warn(`audr: onFailure callback threw (${errorName(error)})`);
-    }
   }
 }
 

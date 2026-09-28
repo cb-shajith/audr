@@ -44,7 +44,13 @@ export type {
   SubmitOutcome,
   SubmitResult,
 } from './results.js';
-export { type BatchOutcome, BatchResult, type RejectedRecord, type Sink } from './sink.js';
+export {
+  type BatchOutcome,
+  BatchResult,
+  type DeliverOptions,
+  type RejectedRecord,
+  type Sink,
+} from './sink.js';
 export { uuidv7 } from './uuid.js';
 export { validate, type ValidateOptions } from './validate.js';
 export { VERSION } from './version.js';

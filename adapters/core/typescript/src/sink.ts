@@ -9,8 +9,16 @@ import { type AudrRecord } from './record.js';
  * failure, and `close()` is idempotent and never throws.
  */
 export interface Sink {
-  deliver(batch: readonly AudrRecord[]): Promise<BatchResult>;
+  deliver(batch: readonly AudrRecord[], options?: DeliverOptions): Promise<BatchResult>;
   close(): Promise<void>;
+}
+
+export interface DeliverOptions {
+  /**
+   * Aborted when shutdown stops waiting for this delivery. Its records are already
+   * accounted `unknown` by then, so the sink should stop work and answer promptly.
+   */
+  readonly signal?: AbortSignal | undefined;
 }
 
 /** A record the destination rejected, identified by its `record_id`. */
