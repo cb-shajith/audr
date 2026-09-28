@@ -46,6 +46,7 @@ export class Pipeline {
   #lingerTimer: ReturnType<typeof setTimeout> | undefined;
   #drainers = 0;
   #stopped = false;
+  #stopping: Promise<void> | undefined;
   #idleWaiters: (() => void)[] = [];
   readonly #abort = new AbortController();
   /** Promises returned by callbacks that have not settled yet; each resolves, never rejects. */
@@ -88,9 +89,14 @@ export class Pipeline {
     return { outcome: 'queued', queued: true, issues: [] };
   }
 
-  /** Deliver queued work now. Resolves `true` once idle, `false` if `timeoutMs` passes first. */
+  /**
+   * Deliver queued work now. Resolves `true` once idle, `false` if `timeoutMs` passes first.
+   * Once stopping, it waits for `stop()` to finish instead.
+   */
   async flush(timeoutMs: number): Promise<boolean> {
-    return this.#stopped ? true : this.#drain(timeoutMs);
+    return this.#stopping === undefined
+      ? this.#drain(timeoutMs)
+      : settlesWithin(this.#stopping, timeoutMs);
   }
 
   /** Report a record `Client.record()` rejected as invalid to `onFailure`. */
@@ -100,9 +106,14 @@ export class Pipeline {
 
   /**
    * Deliver what fits in `timeoutMs`, abort and account for the rest, wait for pending
-   * callbacks within the same bound, then close an owned sink.
+   * callbacks within the same bound, then close an owned sink. Idempotent.
    */
-  async stop(timeoutMs: number): Promise<void> {
+  stop(timeoutMs: number): Promise<void> {
+    this.#stopping ??= this.#stop(timeoutMs);
+    return this.#stopping;
+  }
+
+  async #stop(timeoutMs: number): Promise<void> {
     this.#stopped = true;
     const deadline = Date.now() + timeoutMs;
     try {

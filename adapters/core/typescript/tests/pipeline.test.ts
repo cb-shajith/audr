@@ -228,8 +228,8 @@ describe('sink outcomes', () => {
     for (let index = 0; index < 20; index += 1) client.record(makeRecord());
     await client.shutdown();
     const { submitted, sent, dropped, unknown } = client.stats;
-    expect(submitted).toBe(20);
     expect(sent + dropped + unknown).toBe(submitted);
+    expect(client.stats).toMatchObject({ submitted: 20, sent: 7, dropped: 12, unknown: 1 });
   });
 });
 

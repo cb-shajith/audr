@@ -104,7 +104,8 @@ try {
 ```
 
 A `ValidationIssue` carries a stable `code` and a JSON-pointer `path`, never a field value.
-`encodeRecord()` produces canonical JSON (keys sorted) for a record.
+`encodeRecord()` produces canonical JSON (keys sorted) for a record, and throws
+`ValidationError` for a number JSON cannot represent (`NaN` or `±Infinity`).
 
 ## Writing a sink
 

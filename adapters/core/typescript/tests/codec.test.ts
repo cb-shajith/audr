@@ -89,4 +89,11 @@ describe('encodeRecord', () => {
     const record = makeRecord({ attribution: { environment: 'test', labels: { b: '2', a: '1' } } });
     expect(decodeRecord(encodeRecord(record))).toEqual(record);
   });
+
+  it.each([Number.NaN, Infinity, -Infinity])('rejects %d, which JSON cannot hold', (value) => {
+    const record = makeRecord({ usage: { llm: { input_tokens: value, requests: 1 } } });
+    expect(issuesOf(() => encodeRecord(record))).toEqual([
+      ['INVALID_TYPE', '/usage/llm/input_tokens'],
+    ]);
+  });
 });

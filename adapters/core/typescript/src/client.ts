@@ -141,7 +141,8 @@ export class Client implements AsyncDisposable {
    *
    * Resolves `true` once every queued record has reached a terminal state, `false` if the
    * bound expired first. Records still queued stay queued, and the client stays usable. A
-   * bound above 2147483647, such as `Infinity`, waits without limit.
+   * bound above 2147483647, such as `Infinity`, waits without limit. After `shutdown()`
+   * has begun, it waits for shutdown to finish instead.
    */
   async flush(timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<boolean> {
     checkTimeout(timeoutMs);

@@ -177,6 +177,7 @@ describe('Client.record', () => {
   });
 
   it('survives an onFailure callback whose promise rejects', async () => {
+    vi.useFakeTimers();
     const logger = recordingLogger();
     const audr = client(new MemorySink(), {
       logger,
@@ -254,6 +255,33 @@ describe('Client lifecycle', () => {
     const audr = client(new MemorySink());
     await audr.shutdown();
     expect(await audr.flush()).toBe(true);
+  });
+
+  it('flush during shutdown waits for shutdown to finish', async () => {
+    vi.useFakeTimers();
+    const sink = new ControlledSink();
+    const audr = client(sink);
+    audr.record(makeRecord());
+    void audr.shutdown();
+    let settled = false;
+    const flushed = audr.flush().finally(() => (settled = true));
+    await settle();
+    expect(settled).toBe(false);
+    sink.answer();
+    expect(await flushed).toBe(true);
+    expect(sink.closed).toBe(1);
+  });
+
+  it('flush during shutdown gives up at its own bound', async () => {
+    vi.useFakeTimers();
+    const audr = client(new ControlledSink());
+    audr.record(makeRecord());
+    const stopped = audr.shutdown(1000);
+    const flushed = audr.flush(100);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(await flushed).toBe(false);
+    await vi.advanceTimersByTimeAsync(900);
+    await stopped;
   });
 
   it('logs, rather than throws, when the sink fails to close', async () => {

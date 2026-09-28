@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import {
   type AudrRecord,
   BatchResult,
@@ -44,7 +46,7 @@ export class ControlledSink implements Sink {
   }
 }
 
-/** Let every queued promise callback run. */
+/** Let every pending promise callback run without advancing the clock. Needs fake timers. */
 export async function settle(): Promise<void> {
-  for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
+  await vi.advanceTimersByTimeAsync(0);
 }
