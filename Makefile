@@ -1,5 +1,5 @@
-.PHONY: help spec check schema examples conformance lint fresh links versions install clean all
-.PHONY: python core-python adapter-nemo-relay-python sink-chargebee-python
+.PHONY: help spec check schema examples conformance lint fresh links versions tools-test install clean all
+.PHONY: python core-python adapter-litellm-python adapter-nemo-relay-python sink-chargebee-python
 .PHONY: typescript core-typescript
 
 PYTHON ?= python3
@@ -14,7 +14,7 @@ install: ## Install the tooling dependencies
 spec: ## Regenerate the specification from the schema, outline and prose
 	@$(PYTHON) tools/render.py
 
-check: schema examples conformance lint fresh links versions ## Everything CI runs
+check: schema examples conformance lint fresh links versions tools-test ## Everything CI runs
 	@echo "All checks passed."
 
 schema: ## Meta-validate the schema against JSON Schema Draft 2020-12
@@ -40,8 +40,14 @@ links: ## Check every relative link and heading anchor in Markdown resolves
 versions: ## Fail if a distribution version is written into any Markdown file
 	@$(PYTHON) tools/check_versions.py
 
+tools-test: ## Test the repository tools
+	@$(PYTHON) -m unittest discover -s tools/tests -t tools/tests
+
 core-python: ## Verify the core Python SDK (adapters/core/python)
 	@$(MAKE) -C adapters/core/python verify
+
+adapter-litellm-python: ## Lint and test the LiteLLM Python adapter
+	@$(MAKE) -C adapters/litellm/python lint test
 
 adapter-nemo-relay-python: ## Lint and test the NeMo Relay Python adapter
 	@$(MAKE) -C adapters/nemo-relay/python lint test
@@ -49,7 +55,7 @@ adapter-nemo-relay-python: ## Lint and test the NeMo Relay Python adapter
 sink-chargebee-python: ## Lint and test the Chargebee Python sink
 	@$(MAKE) -C sinks/chargebee/python lint test
 
-python: core-python adapter-nemo-relay-python sink-chargebee-python ## Verify every Python package
+python: core-python adapter-litellm-python adapter-nemo-relay-python sink-chargebee-python ## Verify every Python package
 
 core-typescript: ## Verify the core TypeScript SDK (adapters/core/typescript)
 	@$(MAKE) -C adapters/core/typescript install verify
