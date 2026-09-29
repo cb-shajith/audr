@@ -1,0 +1,76 @@
+import type { Logger, SubmitResult } from 'audr';
+
+/** Stable codes for every diagnostic the adapter logs. Codes are added, never removed. */
+export type DiagnosticCode =
+  | 'ATTRIBUTION_UNRESOLVED'
+  | 'RESOLVER_FAILED'
+  | 'MAP_RESOURCE_FAILED'
+  | 'PROVIDER_UNMAPPED'
+  | 'OPERATION_UNSUPPORTED'
+  | 'OPERATION_EVICTED'
+  | 'RECORD_NOT_QUEUED'
+  | 'HOOK_FAILED';
+
+/**
+ * The only keys a diagnostic may carry. Their values are AI SDK operation ids, hook names,
+ * error class names, counts, submit outcomes and `<code>@<json-pointer>` issues, never a
+ * record value or an error message.
+ */
+export interface DiagnosticFields {
+  /** Always the AI SDK `operationId`, e.g. `ai.generateText`. */
+  readonly operation?: string | undefined;
+  readonly hook?: string | undefined;
+  readonly error?: string | undefined;
+  readonly count?: number | undefined;
+  readonly outcome?: string | undefined;
+  readonly issues?: string | undefined;
+}
+
+const PREFIX = 'audr-adapter-vercel-ai';
+const FIELD_ORDER = ['hook', 'outcome', 'operation', 'issues', 'count', 'error'] as const;
+
+/** `audr-adapter-vercel-ai: <CODE> (<key>=<value>, ...)`. */
+export function formatDiagnostic(code: DiagnosticCode, fields: DiagnosticFields): string {
+  const parts: string[] = [];
+  for (const key of FIELD_ORDER) {
+    const value = fields[key];
+    if (value !== undefined) parts.push(`${key}=${String(value)}`);
+  }
+  return parts.length === 0 ? `${PREFIX}: ${code}` : `${PREFIX}: ${code} (${parts.join(', ')})`;
+}
+
+/** An error's class name, never its message: a message may carry prompt or record values. */
+export function errorName(error: unknown): string {
+  return error instanceof Error ? error.name : typeof error;
+}
+
+/** `<code>@<path>` for every issue, comma-separated; `undefined` when there are none. */
+export function formatIssues(result: SubmitResult): string | undefined {
+  if (result.issues.length === 0) return undefined;
+  return result.issues.map((found) => `${found.code}@${found.path}`).join(',');
+}
+
+/** Writes value-free diagnostics to the host's logger, ignoring any error the logger throws. */
+export class Diagnostics {
+  readonly #logger: Logger;
+
+  constructor(logger: Logger) {
+    this.#logger = logger;
+  }
+
+  warn(code: DiagnosticCode, fields: DiagnosticFields): void {
+    try {
+      this.#logger.warn(formatDiagnostic(code, fields));
+    } catch {
+      // Nowhere is left to report a logger that fails.
+    }
+  }
+
+  error(code: DiagnosticCode, fields: DiagnosticFields): void {
+    try {
+      this.#logger.error(formatDiagnostic(code, fields));
+    } catch {
+      // Nowhere is left to report a logger that fails.
+    }
+  }
+}

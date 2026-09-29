@@ -38,3 +38,22 @@ issue agrees the runtime hook and the record shape; if none exists, stop and rep
 5. **Write the README** for PyPI: install, activate and shut down, attribution, record
    shape, operational bounds. Absolute URLs. No version number. Execute every code block.
 6. **Verify:** `make verify` in the package, then `make all` at the root.
+
+For a TypeScript adapter, the steps differ as follows. The Vercel AI adapter
+(`vercel-ai/typescript/`) is the reference.
+
+1. **Read** the "TypeScript specifics" section of [`CONTRIBUTING.md`](CONTRIBUTING.md) as
+   well.
+2. **Create** `adapters/<target>/typescript/` by copying the toolchain files of
+   `core/typescript/` (`tsconfig*.json`, `eslint.config.js`, `vitest.config.ts`, the
+   Prettier files, `LICENSE`, `NOTICE`). In `package.json`: name `audr-adapter-<target>`,
+   ESM only, `engines.node` as the core, the runtime and `audr` as peer dependencies with
+   the runtime optional, `audr` as a `file:` development dependency.
+3. **Implement** the hook and lifecycle, attribution, then mapping, with tests alongside.
+   Import only the runtime's types.
+4. **Wire the repository:** `.github/workflows/adapter-<target>-typescript-verify.yml`
+   modelled on `adapter-vercel-ai-typescript-verify.yml`, a root `Makefile` target
+   `adapter-<target>-typescript` added to `typescript`, and the same `CODEOWNERS`,
+   `README.md` and component index entries.
+5. **Write the README** for npm, under the same rules, with an npm badge.
+6. **Verify:** `make verify` in the package, then `make all` at the root.
