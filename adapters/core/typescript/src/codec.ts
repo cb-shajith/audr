@@ -9,7 +9,8 @@ import { pointer, validate } from './validate.js';
  * A payload that omits `spec_version`, or declares a release this package does not
  * implement, is rejected on that alone rather than as a cascade of field errors.
  */
-export function parseRecord(data: unknown): AudrRecord {
+export function parseRecord(input: unknown): AudrRecord {
+  const data = cloneInput(input);
   if (isObject(data)) {
     const declared = data.spec_version;
     if (declared === undefined) {
@@ -23,7 +24,16 @@ export function parseRecord(data: unknown): AudrRecord {
   if (issues.length > 0) {
     throw new ValidationError(issues);
   }
-  return structuredClone(data as AudrRecord);
+  return data as AudrRecord;
+}
+
+function cloneInput(input: unknown): unknown {
+  try {
+    return structuredClone(input);
+  } catch {
+    const issues = validate(input);
+    throw new ValidationError(issues.length > 0 ? issues : [issue('INVALID_TYPE', '/')]);
+  }
 }
 
 /** Parse a JSON record, throwing `ValidationError` with every issue it has. */

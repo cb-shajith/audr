@@ -88,10 +88,14 @@ function isOneOf<T extends string>(value: string, allowed: readonly T[]): value 
   return (allowed as readonly string[]).includes(value);
 }
 
-/** The RFC 6901 pointer for a Zod issue path; `/` for the record itself. */
+const CALLER_KEYED = 'labels';
+const REDACTED = '*';
+
 export function pointer(path: readonly PropertyKey[]): string {
-  const segments = path.map((segment) =>
-    String(segment).replaceAll('~', '~0').replaceAll('/', '~1'),
+  const segments = path.map((segment, index) =>
+    index > 0 && path[index - 1] === CALLER_KEYED
+      ? REDACTED
+      : String(segment).replaceAll('~', '~0').replaceAll('/', '~1'),
   );
   return segments.length === 0 ? '/' : `/${segments.join('/')}`;
 }
