@@ -13,4 +13,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   schema and cross-field validation, JSON encoding and decoding, the batching delivery
   pipeline behind `Client`, the sink contract, `FileSink` (`audr/file`), and the sink test
   harness (`audr/testing`). Structural validation and the record types are built on
-  `zod/mini`, and `uuidv7` on `uuid`.
+  `zod/mini`, and `uuidv7` on `uuid`. `Client` logs nothing unless given a `logger`.

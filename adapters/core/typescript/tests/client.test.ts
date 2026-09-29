@@ -151,6 +151,18 @@ describe('Client.record', () => {
     ]);
   });
 
+  it('logs nothing unless given a logger', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const audr = new Client(new MemorySink(), { maxQueueSize: 1 });
+    audr.record(makeRecord({ attribution: {} }));
+    audr.record(makeRecord());
+    audr.record(makeRecord());
+    await audr.shutdown();
+    expect(warn).not.toHaveBeenCalled();
+    expect(error).not.toHaveBeenCalled();
+  });
+
   it('keeps working when the logger throws', async () => {
     const sink = new MemorySink();
     const throwing = () => {
