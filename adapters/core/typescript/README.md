@@ -82,9 +82,12 @@ Every record admitted through `client.record()` ends in exactly one terminal sta
 `onDelivered` fires once per accepted batch with the records that were sent; records a
 sink rejected or could not confirm go to `onFailure`. Both callbacks run synchronously on
 the delivery path, so keep them fast. Either may return a promise: delivery does not wait
-for it, but `shutdown()` does, within its bound. The client catches and logs any error
+for it, but `shutdown()` does, within its bound. The client catches any error
 they throw or reject with.
 `client.stats` returns a `DeliveryStats` snapshot of the counters.
+
+The client logs nothing by default. To receive its diagnostics, pass a `logger` with `warn`
+and `error` methods, such as `console`; messages never carry record values.
 
 ## Parsing JSON input
 

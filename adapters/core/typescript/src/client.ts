@@ -42,8 +42,9 @@ export interface ClientOptions {
    */
   readonly clock?: (() => Date) | undefined;
   /**
-   * Where diagnostics go. Default `console`. Messages never carry record values, and an
-   * error the logger throws is ignored.
+   * Where diagnostics go. Default: none, the client logs nothing. Pass `console` or any
+   * logger with `warn` and `error` to receive them. Messages never carry record values, and
+   * an error the logger throws is ignored.
    */
   readonly logger?: Logger | undefined;
 }
@@ -72,7 +73,7 @@ export class Client implements AsyncDisposable {
       batchMaxSize = 50,
       lingerMs = 5000,
       ownsSink = true,
-      logger = console,
+      logger = SILENT,
     } = options;
     const candidate = sink as Partial<Sink> | null | undefined;
     if (typeof candidate?.deliver !== 'function' || typeof candidate.close !== 'function') {
@@ -187,6 +188,16 @@ function checkTimeout(timeoutMs: unknown): void {
     throw new ConfigurationError('timeoutMs must be a number >= 0');
   }
 }
+
+/** The default logger: diagnostics are discarded. */
+const SILENT: Logger = {
+  warn() {
+    // Discarded: the client logs nothing unless the caller supplies a logger.
+  },
+  error() {
+    // Discarded: the client logs nothing unless the caller supplies a logger.
+  },
+};
 
 /** `logger`, with every error it throws swallowed so that logging never breaks delivery. */
 function safeLogger(logger: Logger): Logger {

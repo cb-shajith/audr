@@ -64,7 +64,7 @@ export interface DeliveryStats {
   readonly queueCapacity: number;
 }
 
-/** Where the client writes diagnostics. `console` satisfies it, as do most loggers. */
+/** Where the client writes diagnostics, if given one. `console` satisfies it, as do most loggers. */
 export interface Logger {
   warn(message: string): void;
   error(message: string): void;
