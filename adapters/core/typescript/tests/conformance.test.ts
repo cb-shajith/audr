@@ -59,7 +59,9 @@ describe('conformance', () => {
       (testCase) => [testCase.file, testCase] as const,
     ),
   )('%s round-trips and stays schema-valid', (_file, testCase) => {
-    const encoded = JSON.parse(encodeRecord(parseRecord(load(testCase)))) as unknown;
+    const input = load(testCase);
+    const encoded = JSON.parse(encodeRecord(parseRecord(input))) as unknown;
+    expect(encoded).toEqual(input);
     expect(schemaValidates(encoded), JSON.stringify(schemaValidates.errors)).toBe(true);
   });
 });

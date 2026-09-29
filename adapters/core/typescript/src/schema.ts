@@ -42,7 +42,7 @@ const TIMESTAMP =
 const REDACTED = '*';
 const SURROGATE_PAIR = /[\uD800-\uDBFF][\uDC00-\uDFFF]/g;
 
-function isObject(value: unknown): value is Readonly<Record<string, unknown>> {
+export function isObject(value: unknown): value is Readonly<Record<string, unknown>> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 

@@ -1,29 +1,8 @@
-/** Machine-stable AUDR failure codes. Codes are added, never removed. */
-export type ErrorCode =
-  | 'REQUIRED'
-  | 'FORBIDDEN'
-  | 'UNKNOWN_PROPERTY'
-  | 'INVALID_TYPE'
-  | 'INVALID_ENUM'
-  | 'INVALID_STRING'
-  | 'STRING_TOO_LONG'
-  | 'INVALID_IDENTIFIER'
-  | 'INVALID_DATETIME'
-  | 'MILLISECOND_PRECISION'
-  | 'FUTURE_EVENT_TIME'
-  | 'INVALID_COUNTER'
-  | 'INVALID_COST'
-  | 'INVALID_CURRENCY'
-  | 'INVALID_PROPERTY_NAME'
-  | 'TOO_MANY_PROPERTIES'
-  | 'NON_PSEUDONYMOUS_ID'
-  | 'EMPTY_USAGE'
-  | 'INVALID_STRUCTURE'
-  | 'UNSUPPORTED_VERSION'
-  | 'NOT_JSON';
-
-/** Value-free messages. A message never includes a record value. */
-const MESSAGES: Readonly<Record<ErrorCode, string>> = {
+/**
+ * The machine-stable AUDR failure codes, each with its value-free message. Codes are added,
+ * never removed, and a message never includes a record value.
+ */
+const MESSAGES = {
   REQUIRED: 'required property is missing',
   FORBIDDEN: 'property is not allowed in this context',
   UNKNOWN_PROPERTY: 'property is not defined by the schema',
@@ -45,7 +24,13 @@ const MESSAGES: Readonly<Record<ErrorCode, string>> = {
   INVALID_STRUCTURE: 'record shape violates a cross-field rule',
   UNSUPPORTED_VERSION: 'spec_version is not a supported AUDR release',
   NOT_JSON: 'input is not valid JSON',
-};
+} as const satisfies Readonly<Record<string, string>>;
+
+export type ErrorCode = keyof typeof MESSAGES;
+
+export function isErrorCode(value: string): value is ErrorCode {
+  return Object.hasOwn(MESSAGES, value);
+}
 
 /** One rule a record breaks: a stable code and an RFC 6901 pointer, never a value. */
 export interface ValidationIssue {

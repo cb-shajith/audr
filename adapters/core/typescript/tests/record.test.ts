@@ -68,12 +68,16 @@ describe('uuidv7', () => {
   });
 
   it('encodes the timestamp in its first 48 bits', () => {
-    const now = Date.UTC(2026, 8, 23, 10, 30);
-    const hex = uuidv7(now).replaceAll('-', '').slice(0, 12);
-    expect(Number.parseInt(hex, 16)).toBe(now);
+    const before = Date.now();
+    const hex = uuidv7().replaceAll('-', '').slice(0, 12);
+    const after = Date.now();
+    expect(Number.parseInt(hex, 16)).toBeGreaterThanOrEqual(before);
+    expect(Number.parseInt(hex, 16)).toBeLessThanOrEqual(after);
   });
 
-  it('sorts by creation time', () => {
-    expect(uuidv7(1_000) < uuidv7(2_000)).toBe(true);
+  it('sorts by creation time, even within one millisecond', () => {
+    const ids = Array.from({ length: 1000 }, () => uuidv7());
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids.toSorted()).toEqual(ids);
   });
 });

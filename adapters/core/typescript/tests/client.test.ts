@@ -151,6 +151,18 @@ describe('Client.record', () => {
     ]);
   });
 
+  it('logs nothing unless given a logger', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const audr = new Client(new MemorySink(), { maxQueueSize: 1 });
+    audr.record(makeRecord({ attribution: {} }));
+    audr.record(makeRecord());
+    audr.record(makeRecord());
+    await audr.shutdown();
+    expect(warn).not.toHaveBeenCalled();
+    expect(error).not.toHaveBeenCalled();
+  });
+
   it('keeps working when the logger throws', async () => {
     const sink = new MemorySink();
     const throwing = () => {
@@ -173,6 +185,18 @@ describe('Client.record', () => {
       },
     });
     expect(audr.record(makeRecord({ attribution: {} })).outcome).toBe('rejected_invalid');
+    expect(logger.lines).toContain('audr: onFailure callback threw (TypeError)');
+  });
+
+  it('survives an onFailure callback whose promise rejects', async () => {
+    vi.useFakeTimers();
+    const logger = recordingLogger();
+    const audr = client(new MemorySink(), {
+      logger,
+      onFailure: () => Promise.reject(new TypeError('boom')),
+    });
+    expect(audr.record(makeRecord({ attribution: {} })).outcome).toBe('rejected_invalid');
+    await settle();
     expect(logger.lines).toContain('audr: onFailure callback threw (TypeError)');
   });
 
@@ -243,6 +267,33 @@ describe('Client lifecycle', () => {
     const audr = client(new MemorySink());
     await audr.shutdown();
     expect(await audr.flush()).toBe(true);
+  });
+
+  it('flush during shutdown waits for shutdown to finish', async () => {
+    vi.useFakeTimers();
+    const sink = new ControlledSink();
+    const audr = client(sink);
+    audr.record(makeRecord());
+    void audr.shutdown();
+    let settled = false;
+    const flushed = audr.flush().finally(() => (settled = true));
+    await settle();
+    expect(settled).toBe(false);
+    sink.answer();
+    expect(await flushed).toBe(true);
+    expect(sink.closed).toBe(1);
+  });
+
+  it('flush during shutdown gives up at its own bound', async () => {
+    vi.useFakeTimers();
+    const audr = client(new ControlledSink());
+    audr.record(makeRecord());
+    const stopped = audr.shutdown(1000);
+    const flushed = audr.flush(100);
+    await vi.advanceTimersByTimeAsync(100);
+    expect(await flushed).toBe(false);
+    await vi.advanceTimersByTimeAsync(900);
+    await stopped;
   });
 
   it('logs, rather than throws, when the sink fails to close', async () => {

@@ -81,8 +81,13 @@ Every record admitted through `client.record()` ends in exactly one terminal sta
 [delivery states](https://github.com/openaudr/audr/blob/main/adapters/core/README.md#delivery-states).
 `onDelivered` fires once per accepted batch with the records that were sent; records a
 sink rejected or could not confirm go to `onFailure`. Both callbacks run synchronously on
-the delivery path, so keep them fast. The client catches and logs any error they throw.
+the delivery path, so keep them fast. Either may return a promise: delivery does not wait
+for it, but `shutdown()` does, within its bound. The client catches any error
+they throw or reject with.
 `client.stats` returns a `DeliveryStats` snapshot of the counters.
+
+The client logs nothing by default. To receive its diagnostics, pass a `logger` with `warn`
+and `error` methods, such as `console`; messages never carry record values.
 
 ## Parsing JSON input
 
@@ -102,7 +107,8 @@ try {
 ```
 
 A `ValidationIssue` carries a stable `code` and a JSON-pointer `path`, never a field value.
-`encodeRecord()` produces canonical JSON (keys sorted) for a record.
+`encodeRecord()` produces canonical JSON (keys sorted) for a record, and throws
+`ValidationError` for a number JSON cannot represent (`NaN` or `±Infinity`).
 
 ## Writing a sink
 
@@ -126,6 +132,10 @@ class PrintSink implements Sink {
   }
 }
 ```
+
+`deliver()` also receives `{ signal }`, an `AbortSignal` that fires when `shutdown()` stops
+waiting for the delivery. By then its records are already accounted `unknown`, so pass the
+signal to `fetch()` or any other cancellable I/O and answer promptly.
 
 `audr/testing` provides `assertSinkContract()` to check a sink against the
 [sink contract](https://github.com/openaudr/audr/blob/main/adapters/core/README.md#the-sink-contract),

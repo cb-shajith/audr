@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { isErrorCode } from '../src/errors.js';
 import { type AudrRecord, validate } from '../src/index.js';
 import { makeRecord } from '../src/testing.js';
 
@@ -21,6 +22,13 @@ const toolResource = {
   name: 'search',
   operation: 'tool_execution',
 } as const;
+
+describe('isErrorCode', () => {
+  it('recognises the codes and nothing else', () => {
+    expect(['REQUIRED', 'INVALID_STRUCTURE', 'NOT_JSON'].every(isErrorCode)).toBe(true);
+    expect(['Invalid input', 'toString', '__proto__'].some(isErrorCode)).toBe(false);
+  });
+});
 
 describe('validate: structure', () => {
   it('accepts a valid record', () => {

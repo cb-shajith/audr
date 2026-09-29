@@ -187,6 +187,27 @@ describe('sink outcomes', () => {
     expect(accepting.logger.lines).toEqual(['audr: onDelivered callback threw (SyntaxError)']);
   });
 
+  it('survives callbacks whose promises reject', async () => {
+    const { client, logger } = setup(new MemorySink({ reject: () => 'no' }), {
+      onFailure: () => Promise.reject(new RangeError('x')),
+    });
+    client.record(makeRecord());
+    await client.flush();
+    await settle();
+    expect(logger.lines).toEqual(['audr: onFailure callback threw (RangeError)']);
+
+    const accepting = setup(new MemorySink(), {
+      onDelivered: async () => {
+        await Promise.resolve();
+        throw new SyntaxError('y');
+      },
+    });
+    accepting.client.record(makeRecord());
+    await accepting.client.flush();
+    await settle();
+    expect(accepting.logger.lines).toEqual(['audr: onDelivered callback threw (SyntaxError)']);
+  });
+
   it('keeps every submitted record in exactly one terminal state', async () => {
     let call = 0;
     const sink = new MemorySink();
@@ -207,7 +228,53 @@ describe('sink outcomes', () => {
     for (let index = 0; index < 20; index += 1) client.record(makeRecord());
     await client.shutdown();
     const { submitted, sent, dropped, unknown } = client.stats;
-    expect(submitted).toBe(20);
     expect(sent + dropped + unknown).toBe(submitted);
+    expect(client.stats).toMatchObject({ submitted: 20, sent: 7, dropped: 12, unknown: 1 });
+  });
+});
+
+describe('shutdown', () => {
+  it('waits for promises the callbacks return', async () => {
+    const replayed: string[] = [];
+    const { client } = setup(new MemorySink({ reject: () => 'no' }), {
+      onFailure: async ({ record }) => {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        replayed.push(record.record_id);
+      },
+    });
+    const record = makeRecord();
+    client.record(record);
+    let stopped = false;
+    void client.shutdown(1000).then(() => (stopped = true));
+    await vi.advanceTimersByTimeAsync(99);
+    expect(stopped).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(stopped).toBe(true);
+    expect(replayed).toEqual([record.record_id]);
+  });
+
+  it('stops waiting for callbacks at its bound', async () => {
+    const { client, logger } = setup(new MemorySink(), {
+      onDelivered: () => new Promise<void>(() => undefined),
+    });
+    client.record(makeRecord());
+    const stopped = client.shutdown(500);
+    await vi.advanceTimersByTimeAsync(500);
+    await stopped;
+    expect(logger.lines).toEqual(['audr: shutdown left 1 callback(s) unsettled']);
+  });
+
+  it('aborts the delivery still in flight at its bound', async () => {
+    const sink = new ControlledSink();
+    const { client } = setup(sink);
+    client.record(makeRecord());
+    const stopped = client.shutdown(500);
+    await settle();
+    const [signal] = sink.signals;
+    expect(signal?.aborted).toBe(false);
+    await vi.advanceTimersByTimeAsync(500);
+    await stopped;
+    expect(signal?.aborted).toBe(true);
+    expect(client.stats).toMatchObject({ unknown: 1 });
   });
 });

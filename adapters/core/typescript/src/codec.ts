@@ -1,7 +1,7 @@
 import { issue, ValidationError } from './errors.js';
 import { type AudrRecord } from './record.js';
-import { SUPPORTED_SPEC_VERSION } from './schema.js';
-import { validate } from './validate.js';
+import { isObject, SUPPORTED_SPEC_VERSION } from './schema.js';
+import { pointer, validate } from './validate.js';
 
 /**
  * Parse an already-decoded record, throwing `ValidationError` with every issue it has.
@@ -10,8 +10,8 @@ import { validate } from './validate.js';
  * implement, is rejected on that alone rather than as a cascade of field errors.
  */
 export function parseRecord(data: unknown): AudrRecord {
-  if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-    const declared: unknown = (data as Record<string, unknown>).spec_version;
+  if (isObject(data)) {
+    const declared = data.spec_version;
     if (declared === undefined) {
       throw new ValidationError([issue('REQUIRED', '/spec_version')]);
     }
@@ -37,20 +37,29 @@ export function decodeRecord(json: string): AudrRecord {
   return parseRecord(data);
 }
 
-/** The record as JSON with keys sorted at every level; compact unless `indent` is given. */
+/**
+ * The record as JSON with keys sorted at every level; compact unless `indent` is given.
+ * Throws `ValidationError` for a number JSON cannot represent (`NaN`, `±Infinity`), which
+ * `JSON.stringify` would otherwise write as `null`.
+ */
 export function encodeRecord(
   record: AudrRecord,
   options: { readonly indent?: number | undefined } = {},
 ): string {
-  return JSON.stringify(sortKeys(record), undefined, options.indent);
+  return JSON.stringify(sortKeys(record, []), undefined, options.indent);
 }
 
 /** A copy with object keys in sorted order. An AUDR record holds no arrays. */
-function sortKeys(value: unknown): unknown {
+function sortKeys(value: unknown, path: readonly string[]): unknown {
+  if (typeof value === 'number' && !Number.isFinite(value)) {
+    throw new ValidationError([issue('INVALID_TYPE', pointer(path))]);
+  }
   if (typeof value === 'object' && value !== null) {
     const entries = Object.entries(value).filter(([, field]) => field !== undefined);
     entries.sort(([a], [b]) => (a < b ? -1 : 1));
-    return Object.fromEntries(entries.map(([key, field]) => [key, sortKeys(field)]));
+    return Object.fromEntries(
+      entries.map(([key, field]) => [key, sortKeys(field, [...path, key])]),
+    );
   }
   return value;
 }

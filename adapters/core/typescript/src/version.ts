@@ -1,2 +1,2 @@
-/** This package's release; `tests/public-api.test.ts` keeps it equal to `package.json`. */
+/** This package's release version. */
 export const VERSION = '0.1.0';

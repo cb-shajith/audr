@@ -25,9 +25,16 @@ export interface ClientOptions {
   readonly batchMaxSize?: number | undefined;
   /** How long a partial batch waits for more records, at most 2147483647. Default 5000. */
   readonly lingerMs?: number | undefined;
-  /** Called synchronously for every record that ends `dropped` or `unknown`. */
+  /**
+   * Called synchronously for every record that ends `dropped` or `unknown`. A returned
+   * promise is not awaited on the delivery path; `shutdown()` waits for it within its bound.
+   */
   readonly onFailure?: FailureCallback | undefined;
-  /** Called synchronously once per accepted batch with the records the sink accepted. */
+  /**
+   * Called synchronously once per accepted batch with the records the sink accepted. A
+   * returned promise is not awaited on the delivery path; `shutdown()` waits for it within
+   * its bound.
+   */
   readonly onDelivered?: DeliveredCallback | undefined;
   /**
    * The clock `timing.event_time` is checked against. Default `() => new Date()`, which is
@@ -35,8 +42,9 @@ export interface ClientOptions {
    */
   readonly clock?: (() => Date) | undefined;
   /**
-   * Where diagnostics go. Default `console`. Messages never carry record values, and an
-   * error the logger throws is ignored.
+   * Where diagnostics go. Default: none, the client logs nothing. Pass `console` or any
+   * logger with `warn` and `error` to receive them. Messages never carry record values, and
+   * an error the logger throws is ignored.
    */
   readonly logger?: Logger | undefined;
 }
@@ -56,7 +64,6 @@ export class Client implements AsyncDisposable {
   readonly #pipeline: Pipeline;
   readonly #emitter: Emitter | undefined;
   readonly #clock: (() => Date) | undefined;
-  readonly #onFailure: FailureCallback | undefined;
   readonly #logger: Logger;
   #shutdown: Promise<void> | undefined;
 
@@ -66,7 +73,7 @@ export class Client implements AsyncDisposable {
       batchMaxSize = 50,
       lingerMs = 5000,
       ownsSink = true,
-      logger = console,
+      logger = SILENT,
     } = options;
     const candidate = sink as Partial<Sink> | null | undefined;
     if (typeof candidate?.deliver !== 'function' || typeof candidate.close !== 'function') {
@@ -83,7 +90,6 @@ export class Client implements AsyncDisposable {
     }
     this.#emitter = options.emitter;
     this.#clock = options.clock;
-    this.#onFailure = options.onFailure;
     this.#logger = safeLogger(logger);
     this.#pipeline = new Pipeline(sink, {
       maxQueueSize,
@@ -126,7 +132,7 @@ export class Client implements AsyncDisposable {
     }
     this.#logger.warn(`audr: record rejected, ${issues.length} validation issue(s)`);
     if (wellFormed) {
-      this.#notifyInvalid(copy);
+      this.#pipeline.reportInvalid(copy);
     }
     return { outcome: 'rejected_invalid', queued: false, issues };
   }
@@ -136,7 +142,8 @@ export class Client implements AsyncDisposable {
    *
    * Resolves `true` once every queued record has reached a terminal state, `false` if the
    * bound expired first. Records still queued stay queued, and the client stays usable. A
-   * bound above 2147483647, such as `Infinity`, waits without limit.
+   * bound above 2147483647, such as `Infinity`, waits without limit. After `shutdown()`
+   * has begun, it waits for shutdown to finish instead.
    */
   async flush(timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<boolean> {
     checkTimeout(timeoutMs);
@@ -174,19 +181,6 @@ export class Client implements AsyncDisposable {
     }
     return undefined;
   }
-
-  #notifyInvalid(record: AudrRecord): void {
-    try {
-      this.#onFailure?.({
-        record,
-        disposition: 'dropped',
-        reason: 'invalid',
-        retryable: false,
-      });
-    } catch (error) {
-      this.#logger.warn(`audr: onFailure callback threw (${errorName(error)})`);
-    }
-  }
 }
 
 function checkTimeout(timeoutMs: unknown): void {
@@ -194,6 +188,16 @@ function checkTimeout(timeoutMs: unknown): void {
     throw new ConfigurationError('timeoutMs must be a number >= 0');
   }
 }
+
+/** The default logger: diagnostics are discarded. */
+const SILENT: Logger = {
+  warn() {
+    // Discarded: the client logs nothing unless the caller supplies a logger.
+  },
+  error() {
+    // Discarded: the client logs nothing unless the caller supplies a logger.
+  },
+};
 
 /** `logger`, with every error it throws swallowed so that logging never breaks delivery. */
 function safeLogger(logger: Logger): Logger {

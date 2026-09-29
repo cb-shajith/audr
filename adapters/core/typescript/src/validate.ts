@@ -1,6 +1,6 @@
 import * as z from 'zod/mini';
 
-import { type ErrorCode, issue, type ValidationIssue } from './errors.js';
+import { isErrorCode, issue, type ValidationIssue } from './errors.js';
 import { type AudrRecord } from './record.js';
 import { audrRecord, MODEL_OPERATIONS, parseTimestamp, TOOL_OPERATIONS } from './schema.js';
 
@@ -29,11 +29,15 @@ export function inspect(
 ): { issues: ValidationIssue[]; wellFormed: boolean } {
   const structural = z.safeParse(audrRecord, value).error?.issues ?? [];
   if (structural.length > 0) {
-    // Only the record itself can fail at the root, and it is never merely absent.
+    // Only the record itself can fail at the root, and it is never merely absent. A message
+    // that is not an `ErrorCode` is a Zod default the schema failed to override.
     const issues = structural.map((found) =>
       found.path.length === 0
         ? issue('INVALID_TYPE', '/')
-        : issue(found.message as ErrorCode, pointer(found.path)),
+        : issue(
+            isErrorCode(found.message) ? found.message : 'INVALID_STRUCTURE',
+            pointer(found.path),
+          ),
     );
     return { issues: dedupe(issues), wellFormed: false };
   }
@@ -85,7 +89,7 @@ function isOneOf<T extends string>(value: string, allowed: readonly T[]): value 
 }
 
 /** The RFC 6901 pointer for a Zod issue path; `/` for the record itself. */
-function pointer(path: readonly PropertyKey[]): string {
+export function pointer(path: readonly PropertyKey[]): string {
   const segments = path.map((segment) =>
     String(segment).replaceAll('~', '~0').replaceAll('/', '~1'),
   );

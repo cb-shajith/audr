@@ -36,10 +36,19 @@ export interface FailedRecord {
   readonly detail?: string | undefined;
 }
 
-export type FailureCallback = (failure: FailedRecord) => void;
+/**
+ * Called for every record that ends `dropped` or `unknown`. A returned promise is not
+ * awaited on the delivery path; `shutdown()` waits for it within its bound.
+ */
+export type FailureCallback =
+  ((failure: FailedRecord) => void) | ((failure: FailedRecord) => Promise<void>);
 
-/** Called once per accepted batch with the records the sink accepted. */
-export type DeliveredCallback = (records: readonly AudrRecord[]) => void;
+/**
+ * Called once per accepted batch with the records the sink accepted. A returned promise is
+ * not awaited on the delivery path; `shutdown()` waits for it within its bound.
+ */
+export type DeliveredCallback =
+  ((records: readonly AudrRecord[]) => void) | ((records: readonly AudrRecord[]) => Promise<void>);
 
 /**
  * A point-in-time snapshot of delivery counters. Every submitted record ends in exactly
@@ -55,7 +64,7 @@ export interface DeliveryStats {
   readonly queueCapacity: number;
 }
 
-/** Where the client writes diagnostics. `console` satisfies it, as do most loggers. */
+/** Where the client writes diagnostics, if given one. `console` satisfies it, as do most loggers. */
 export interface Logger {
   warn(message: string): void;
   error(message: string): void;
