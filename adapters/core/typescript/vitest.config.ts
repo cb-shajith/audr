@@ -7,6 +7,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
+      exclude: ['src/generated-validator.ts'],
       reporter: ['text'],
       thresholds: { lines: 90, branches: 90, functions: 90, statements: 90 },
     },

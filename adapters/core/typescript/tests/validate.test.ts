@@ -319,9 +319,9 @@ describe('validate: cross-field rules', () => {
       attribution: { environment: 'production', user_id: 'a@b.c' },
     };
     expect(pairs(record)).toEqual([
-      ['INVALID_STRUCTURE', '/usage'],
-      ['INVALID_STRUCTURE', '/resource/type'],
       ['REQUIRED', '/resource/modality'],
+      ['INVALID_STRUCTURE', '/resource/type'],
+      ['INVALID_STRUCTURE', '/usage'],
       ['REQUIRED', '/attribution/account_id'],
       ['NON_PSEUDONYMOUS_ID', '/attribution/user_id'],
     ]);

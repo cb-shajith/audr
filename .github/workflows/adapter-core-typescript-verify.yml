@@ -53,6 +53,9 @@ jobs:
       - name: Lint
         run: make lint
 
+      - name: Generated schema is current
+        run: make schema-check
+
       - name: Tests
         run: make test
 

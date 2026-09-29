@@ -59,8 +59,7 @@
     "prepack": "npm run build"
   },
   "dependencies": {
-    "uuid": "^14.0.2",
-    "zod": "^4.6.5"
+    "uuid": "^14.0.2"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
@@ -71,6 +70,7 @@
     "eslint": "^10.10.0",
     "prettier": "^3.9.6",
     "publint": "^0.3.24",
+    "quicktype-core": "^26.0.0",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.70.0",
     "vitest": "^5.0.0"

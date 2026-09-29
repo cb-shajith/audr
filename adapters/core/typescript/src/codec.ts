@@ -1,7 +1,7 @@
 import { issue, ValidationError } from './errors.js';
+import { SUPPORTED_SPEC_VERSION } from './generated-schema.js';
 import { type AudrRecord } from './record.js';
-import { isObject, SUPPORTED_SPEC_VERSION } from './schema.js';
-import { pointer, validate } from './validate.js';
+import { isObject, pointer, validate } from './validate.js';
 
 /**
  * Parse an already-decoded record, throwing `ValidationError` with every issue it has.
