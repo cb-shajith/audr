@@ -11,6 +11,7 @@ on:
       - 'tools/check_links.py'
       - 'tools/check_versions.py'
       - '**/pyproject.toml'
+      - '**/package.json'
       - '**/_version.py'
       - '.github/workflows/docs-verify.yml'
   push:
@@ -21,6 +22,7 @@ on:
       - 'tools/check_links.py'
       - 'tools/check_versions.py'
       - '**/pyproject.toml'
+      - '**/package.json'
       - '**/_version.py'
       - '.github/workflows/docs-verify.yml'
 
