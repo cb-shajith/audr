@@ -9,13 +9,16 @@ import {
   type SubmitResult,
 } from './results.js';
 import { type Sink } from './sink.js';
-import { inspect } from './validate.js';
+import { inspect, isObject, validate } from './validate.js';
 
 const MAX_BATCH_SIZE = 500;
 const DEFAULT_TIMEOUT_MS = 30_000;
 
 export interface ClientOptions {
-  /** Stamped on every record that does not carry its own `emitter`. */
+  /**
+   * Stamped on every record that does not carry its own `emitter`. Checked against the
+   * schema on construction; an invalid one throws `ConfigurationError`.
+   */
   readonly emitter?: Emitter | undefined;
   /** Close the sink on shutdown, including one you supplied. Default `true`. */
   readonly ownsSink?: boolean | undefined;
@@ -88,6 +91,15 @@ export class Client implements AsyncDisposable {
     if (!Number.isFinite(lingerMs) || lingerMs < 0 || lingerMs > MAX_TIMER_MS) {
       throw new ConfigurationError(`lingerMs must be a number from 0 to ${MAX_TIMER_MS}`);
     }
+    if (options.emitter !== undefined) {
+      const found = validate({ emitter: options.emitter }).filter(
+        ({ path }) => path === '/emitter' || path.startsWith('/emitter/'),
+      );
+      if (found.length > 0) {
+        const summary = found.map(({ code, path }) => `${code} at ${path}`).join('; ');
+        throw new ConfigurationError(`emitter is invalid: ${summary}`);
+      }
+    }
     this.#emitter = options.emitter;
     this.#clock = options.clock;
     this.#logger = safeLogger(logger);
@@ -112,8 +124,8 @@ export class Client implements AsyncDisposable {
    *
    * The client keeps its own copy, so changing `record` afterwards does not change what is
    * delivered. Problems are reported through the returned `SubmitResult`, `onFailure` and
-   * `stats`. A value that is not structurally a record is rejected without calling
-   * `onFailure`, because there is no record to hand it.
+   * `stats`. Every invalid object is reported to `onFailure`; a value that is not an object
+   * is rejected without calling it, because there is no record to hand it.
    */
   record(record: AudrRecord): SubmitResult {
     if (this.#shutdown !== undefined) {
@@ -126,13 +138,13 @@ export class Client implements AsyncDisposable {
       this.#logger.warn(`audr: record rejected, it is not plain data (${errorName(error)})`);
       return { outcome: 'rejected_invalid', queued: false, issues: [issue('INVALID_TYPE', '/')] };
     }
-    const { issues, wellFormed } = inspect(copy, { now: this.#now() });
+    const { issues, data } = inspect(copy, { now: this.#now() });
     if (issues.length === 0) {
-      return this.#pipeline.submit(copy);
+      return this.#pipeline.submit(data as AudrRecord);
     }
     this.#logger.warn(`audr: record rejected, ${issues.length} validation issue(s)`);
-    if (wellFormed) {
-      this.#pipeline.reportInvalid(copy);
+    if (isObject(copy)) {
+      this.#pipeline.reportInvalid(data as AudrRecord);
     }
     return { outcome: 'rejected_invalid', queued: false, issues };
   }
@@ -165,8 +177,10 @@ export class Client implements AsyncDisposable {
   }
 
   #stamp(record: AudrRecord): AudrRecord {
-    const bare = (record as Partial<AudrRecord> | null)?.emitter === undefined;
-    return this.#emitter !== undefined && bare ? { ...record, emitter: this.#emitter } : record;
+    if (this.#emitter === undefined || !isObject(record) || record.emitter !== undefined) {
+      return record;
+    }
+    return { ...record, emitter: this.#emitter };
   }
 
   /** The configured clock's reading, or `undefined` to fall back to the system clock. */
