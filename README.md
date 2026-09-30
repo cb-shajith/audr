@@ -5,6 +5,7 @@
 [![Spec v1.0.0](https://img.shields.io/badge/spec-v1.0.0-blue)](spec/SPEC.md)
 [![PyPI](https://img.shields.io/pypi/v/audr?include_prereleases&label=pypi%20audr)](https://pypi.org/project/audr/)
 [![Python versions](https://img.shields.io/pypi/pyversions/audr)](https://pypi.org/project/audr/)
+[![npm](https://img.shields.io/npm/v/audr?include_prereleases&label=npm%20audr)](https://www.npmjs.com/package/audr)
 [![License Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue)](LICENSE)
 
 An open standard for recording who initiated an agent run and what each step
@@ -44,7 +45,7 @@ attribution that the records join.
 | --- | --- |
 | [`spec/`](spec/SPEC.md) | The standard: [`SPEC.md`](spec/SPEC.md) to implement it, [`audr.schema.json`](spec/audr.schema.json) to validate records, [`examples/record.json`](spec/examples/record.json) for a complete record |
 | [`conformance/`](conformance/README.md) | Language-neutral fixtures every implementation must reproduce |
-| [`adapters/`](adapters/README.md) | Things that produce records — the [Python SDK](adapters/core/python/README.md) and runtime adapters |
+| [`adapters/`](adapters/README.md) | Things that produce records — the [Python](adapters/core/python/README.md) and [TypeScript](adapters/core/typescript/README.md) SDKs and runtime adapters |
 | [`sinks/`](sinks/README.md) | Things that consume records — destinations such as Chargebee |
 | `tools/` | The specification generator and the repository checks, driven by the [`Makefile`](Makefile) |
 
@@ -114,7 +115,7 @@ asyncio.run(main())
 
 | Part | Reference implementation | Guide |
 | --- | --- | --- |
-| Core SDK | [`audr`](adapters/core/python/README.md) | [`adapters/core/README.md`](adapters/core/README.md) — the `Client`, the sink contract, delivery states |
+| Core SDK | [`audr`](adapters/core/python/README.md) (Python), [`audr`](adapters/core/typescript/README.md) (TypeScript) | [`adapters/core/README.md`](adapters/core/README.md) — the `Client`, the sink contract, delivery states |
 | Adapters | [`audr-adapter-litellm`](adapters/litellm/python/README.md), [`audr-adapter-nemo-relay`](adapters/nemo-relay/python/README.md) | [`adapters/README.md`](adapters/README.md) |
 | Sinks | [`audr-sink-chargebee`](sinks/chargebee/python/README.md) | [`sinks/README.md`](sinks/README.md) |
 

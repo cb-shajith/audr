@@ -23,6 +23,7 @@ identity and attribution that records from different systems join.
 | --- | --- |
 | `adapters/` | [`adapters/AGENTS.md`](adapters/AGENTS.md) |
 | `adapters/core/python/` | [`adapters/core/python/AGENTS.md`](adapters/core/python/AGENTS.md) |
+| `adapters/core/typescript/` | [`adapters/core/typescript/AGENTS.md`](adapters/core/typescript/AGENTS.md) |
 | `adapters/litellm/python/` | [`adapters/litellm/python/AGENTS.md`](adapters/litellm/python/AGENTS.md) |
 | `adapters/nemo-relay/python/` | [`adapters/nemo-relay/python/AGENTS.md`](adapters/nemo-relay/python/AGENTS.md) |
 | `sinks/` | [`sinks/AGENTS.md`](sinks/AGENTS.md) |
@@ -54,10 +55,11 @@ identity and attribution that records from different systems join.
 ## Verification
 
 ```bash
-make install   # tooling dependencies
-make check     # schema, examples, conformance, cross-references, staleness, links, versions, tools
-make python    # lint and test every Python package
-make all       # check + python
+make install     # tooling dependencies
+make check       # schema, examples, conformance, cross-references, staleness, links, versions, tools
+make python      # lint and test every Python package
+make typescript  # lint, test and package-check every TypeScript package
+make all         # check + python + typescript
 ```
 
 A change to `spec/`, `conformance/` or `tools/` is done when `make check` passes. A change
