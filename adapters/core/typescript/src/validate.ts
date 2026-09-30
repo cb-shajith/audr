@@ -79,21 +79,27 @@ export function validate(value: unknown, options: ValidateOptions = {}): Validat
   return inspect(value, options).issues;
 }
 
-/** `validate`, also reporting whether `value` is well-formed enough to be a record. */
+/** `validate`, also returning the copy of `value` it checked, as JSON sees it. */
 export function inspect(
   value: unknown,
   options: ValidateOptions = {},
-): { issues: ValidationIssue[]; wellFormed: boolean } {
-  const data = asJson(value);
+): { issues: ValidationIssue[]; data: unknown } {
+  let data: unknown;
+  try {
+    data = asJson(value);
+  } catch {
+    // A proxy trap or a property getter threw while the value was read.
+    return { issues: [issue('INVALID_TYPE', '/')], data: undefined };
+  }
   const schema = schemaIssues(data);
   const structural = [...formatIssues(data), ...schema.structural];
   if (structural.length > 0) {
-    return { issues: dedupe(structural), wellFormed: false };
+    return { issues: dedupe(structural), data };
   }
   const now = options.now?.getTime() ?? Date.now();
   return {
     issues: dedupe([...schema.conditional, ...proseIssues(data as AudrRecord, now)]),
-    wellFormed: true,
+    data,
   };
 }
 
@@ -132,11 +138,15 @@ function codeFor(error: SchemaError, value: unknown): ErrorCode {
   if (error.propertyName !== undefined) return 'INVALID_PROPERTY_NAME';
   const bound = error.instancePath.startsWith('/cost/') ? 'INVALID_COST' : 'INVALID_COUNTER';
   switch (error.keyword) {
-    case 'type':
+    case 'type': {
       // A non-finite number is a number the schema cannot represent, not a wrong type.
-      return typeof value === 'number' && [error.params.type].flat().includes('number')
+      const numeric = [error.params.type]
+        .flat()
+        .some((type) => type === 'number' || type === 'integer');
+      return typeof value === 'number' && !Number.isFinite(value) && numeric
         ? bound
         : 'INVALID_TYPE';
+    }
     case 'pattern':
       return error.parentSchema.format === 'date-time' ? 'INVALID_DATETIME' : 'INVALID_STRING';
     case 'minimum':

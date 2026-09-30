@@ -50,7 +50,8 @@ export function decodeRecord(json: string): AudrRecord {
 /**
  * The record as JSON with keys sorted at every level; compact unless `indent` is given.
  * Throws `ValidationError` for a number JSON cannot represent (`NaN`, `±Infinity`), which
- * `JSON.stringify` would otherwise write as `null`.
+ * `JSON.stringify` would otherwise write as `null`, and for an array or non-plain object
+ * such as a `Date`, which no AUDR record holds.
  */
 export function encodeRecord(
   record: AudrRecord,
@@ -65,6 +66,9 @@ function sortKeys(value: unknown, path: readonly string[]): unknown {
     throw new ValidationError([issue('INVALID_TYPE', pointer(path))]);
   }
   if (typeof value === 'object' && value !== null) {
+    if (!isPlainObject(value)) {
+      throw new ValidationError([issue('INVALID_TYPE', pointer(path))]);
+    }
     const entries = Object.entries(value).filter(([, field]) => field !== undefined);
     entries.sort(([a], [b]) => (a < b ? -1 : 1));
     return Object.fromEntries(
@@ -72,4 +76,10 @@ function sortKeys(value: unknown, path: readonly string[]): unknown {
     );
   }
   return value;
+}
+
+function isPlainObject(value: unknown): boolean {
+  if (!isObject(value)) return false;
+  const prototype: unknown = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }

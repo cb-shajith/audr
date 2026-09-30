@@ -58,6 +58,19 @@ describe('FileSink', () => {
     await sink.close();
   });
 
+  it('reports a record it cannot encode as a permanent failure and writes nothing', async () => {
+    const path = join(directory, 'audr.jsonl');
+    const sink = new FileSink(path);
+    const unencodable = makeRecord({ usage: { llm: { input_tokens: Number.NaN, requests: 1 } } });
+    expect(await sink.deliver([makeRecord(), unencodable])).toEqual({
+      outcome: 'permanent_failure',
+      detail: 'ValidationError',
+    });
+    expect(await sink.deliver([makeRecord()])).toEqual({ outcome: 'accepted' });
+    await sink.close();
+    expect(await lines(path)).toHaveLength(1);
+  });
+
   it('writes concurrent deliveries one after another through one handle', async () => {
     const path = join(directory, 'audr.jsonl');
     const sink = new FileSink(path, { append: false });

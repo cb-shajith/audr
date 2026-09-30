@@ -35,6 +35,22 @@ describe('validate: structure', () => {
     expect(pairs(makeRecord())).toEqual([]);
   });
 
+  it('reports a value that throws while it is read, rather than throwing', () => {
+    const trapped = new Proxy(makeRecord(), {
+      ownKeys: () => {
+        throw new TypeError('trap');
+      },
+    });
+    const getter = Object.defineProperty({ ...makeRecord() }, 'run', {
+      enumerable: true,
+      get: () => {
+        throw new TypeError('getter');
+      },
+    });
+    expect(pairs(trapped)).toEqual([['INVALID_TYPE', '/']]);
+    expect(pairs(getter)).toEqual([['INVALID_TYPE', '/']]);
+  });
+
   it('rejects a value that is not an object', () => {
     expect(pairs('record')).toEqual([['INVALID_TYPE', '/']]);
     expect(pairs(null)).toEqual([['INVALID_TYPE', '/']]);
@@ -156,6 +172,14 @@ describe('validate: structure', () => {
     expect(pairs(llm({ audio_input_seconds: 1.5 }))).toEqual([]);
     expect(pairs(llm({ audio_input_seconds: Infinity }))).toEqual([
       ['INVALID_COUNTER', '/usage/llm/audio_input_seconds'],
+    ]);
+    for (const value of [Infinity, Number.NaN]) {
+      expect(pairs(llm({ input_tokens: value }))).toEqual([
+        ['INVALID_COUNTER', '/usage/llm/input_tokens'],
+      ]);
+    }
+    expect(pairs(withBlock('timing', { duration_ms: Number.NaN }))).toEqual([
+      ['INVALID_COUNTER', '/timing/duration_ms'],
     ]);
     expect(pairs(withBlock('timing', { duration_ms: -5 }))).toEqual([
       ['INVALID_COUNTER', '/timing/duration_ms'],

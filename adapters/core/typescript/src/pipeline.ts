@@ -343,14 +343,14 @@ export class Pipeline {
 
 /**
  * Whether `work` settles within `timeoutMs`. A bound too long for a timer is no bound at
- * all, and the timer does not keep the process alive.
+ * all. The timer keeps the process alive, so a caller awaiting a hung sink still reaches
+ * the bound.
  */
 async function settlesWithin(work: Promise<unknown>, timeoutMs: number): Promise<boolean> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const expired = new Promise<boolean>((resolve) => {
     if (timeoutMs > MAX_TIMER_MS) return;
     timer = setTimeout(resolve, timeoutMs, false);
-    unref(timer);
   });
   try {
     return await Promise.race([work.then(() => true), expired]);
@@ -361,9 +361,4 @@ async function settlesWithin(work: Promise<unknown>, timeoutMs: number): Promise
 
 function isThenable(value: unknown): value is PromiseLike<unknown> {
   return typeof (value as { then?: unknown } | null | undefined)?.then === 'function';
-}
-
-/** Stop a timer that only bounds real work from keeping the process alive, where supported. */
-function unref(timer: ReturnType<typeof setTimeout>): void {
-  (timer as { unref?: () => void }).unref?.();
 }
