@@ -1,4 +1,4 @@
-import type { Logger, SubmitResult } from 'audr';
+import type { Logger, SubmitResult } from '@openaudr/audr';
 
 /** Stable codes for every diagnostic the adapter logs. Codes are added, never removed. */
 export type DiagnosticCode =
@@ -25,10 +25,10 @@ export interface DiagnosticFields {
   readonly issues?: string | undefined;
 }
 
-const PREFIX = 'audr-adapter-vercel-ai';
+const PREFIX = '@openaudr/adapter-vercel-ai';
 const FIELD_ORDER = ['hook', 'outcome', 'operation', 'issues', 'count', 'error'] as const;
 
-/** `audr-adapter-vercel-ai: <CODE> (<key>=<value>, ...)`. */
+/** `@openaudr/adapter-vercel-ai: <CODE> (<key>=<value>, ...)`. */
 export function formatDiagnostic(code: DiagnosticCode, fields: DiagnosticFields): string {
   const parts: string[] = [];
   for (const key of FIELD_ORDER) {

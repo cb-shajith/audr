@@ -8,7 +8,7 @@ import {
   type Operation,
   type Resource,
   type Usage,
-} from 'audr';
+} from '@openaudr/audr';
 
 import { type AttributionSource, resolveAttribution } from './attribution.js';
 import { Diagnostics, errorName, formatIssues } from './diagnostics.js';

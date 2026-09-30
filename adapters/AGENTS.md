@@ -46,9 +46,10 @@ For a TypeScript adapter, the steps differ as follows. The Vercel AI adapter
    well.
 2. **Create** `adapters/<target>/typescript/` by copying the toolchain files of
    `core/typescript/` (`tsconfig*.json`, `eslint.config.js`, `vitest.config.ts`, the
-   Prettier files, `LICENSE`, `NOTICE`). In `package.json`: name `audr-adapter-<target>`,
-   ESM only, `engines.node` as the core, the runtime and `audr` as peer dependencies with
-   the runtime optional, `audr` as a `file:` development dependency.
+   Prettier files, `LICENSE`, `NOTICE`). In `package.json`: name `@openaudr/adapter-<target>`,
+   ESM only, `engines.node` as the core, the runtime and `@openaudr/audr` as peer
+   dependencies with the runtime optional, `@openaudr/audr` as a `file:` development
+   dependency.
 3. **Implement** the hook and lifecycle, attribution, then mapping, with tests alongside.
    Import only the runtime's types.
 4. **Wire the repository:** `.github/workflows/adapter-<target>-typescript-verify.yml`

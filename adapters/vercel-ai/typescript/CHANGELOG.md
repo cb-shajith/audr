@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release: `audrTelemetry()`, a Vercel AI SDK 7 `Telemetry` integration that
   submits one AUDR record per provider model call (`generation`), client-side tool
   execution (`tool_execution`), embedding provider call (`embedding`) and rerank call
-  (`reranking`) to a host-owned `audr` `Client`. Attribution is read from
+  (`reranking`) to a host-owned `@openaudr/audr` `Client`. Attribution is read from
   `runtimeContext.audr` over configurable defaults; an AI SDK
   call started inside a tool joins the calling run with `run.parent_span_id` set to the
   tool's span. Diagnostics carry stable codes and no record values.

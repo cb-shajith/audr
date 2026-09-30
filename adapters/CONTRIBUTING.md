@@ -62,19 +62,21 @@ order is: stop starting runtime calls, await the ones in flight, then
 `await client.shutdown()`.
 
 The runtime is an optional peer dependency (`peerDependenciesMeta`), and the adapter
-imports only its types, so installing the adapter does not pull the runtime in. `audr` is
-a peer dependency. Enforce the type-only rule with ESLint's
+imports only its types, so installing the adapter does not pull the runtime in.
+`@openaudr/audr` is a peer dependency. Enforce the type-only rule with ESLint's
 `@typescript-eslint/no-restricted-imports` and `allowTypeImports`.
 
-Until `audr` is published on npm, the adapter's development dependency on it is
-`file:../../core/typescript`, and the package `Makefile`'s `install` target builds the core
-before `npm ci`. The [Vercel AI adapter](vercel-ai/typescript/AGENTS.md) implements all of
+Until `@openaudr/audr` is published on npm, the adapter's development dependency on it
+is `file:../../core/typescript`, and the package `Makefile`'s `install` target builds the
+core before `npm ci`. The [Vercel AI adapter](vercel-ai/typescript/AGENTS.md) implements all of
 this.
 
 ## What a new adapter ships
 
-Directory `adapters/<target>/<language>/`, distribution `audr-adapter-<target>`. A Python
-package's import package is `audr_adapter_<target>`. A Python package contains:
+Directory `adapters/<target>/<language>/`. A Python distribution is `audr-adapter-<target>`
+with the import package `audr_adapter_<target>`; a TypeScript package is
+`@openaudr/adapter-<target>`, in the same npm scope as the core `@openaudr/audr`. A Python
+package contains:
 
 | Path | Purpose |
 | --- | --- |

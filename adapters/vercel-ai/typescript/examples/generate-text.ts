@@ -10,9 +10,9 @@ import { join } from 'node:path';
 
 import { generateText, isStepCount, registerTelemetry, tool } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
-import { Client } from 'audr';
-import { FileSink } from 'audr/file';
-import { audrTelemetry } from 'audr-adapter-vercel-ai';
+import { audrTelemetry } from '@openaudr/adapter-vercel-ai';
+import { Client } from '@openaudr/audr';
+import { FileSink } from '@openaudr/audr/file';
 import { z } from 'zod';
 
 const usage = {

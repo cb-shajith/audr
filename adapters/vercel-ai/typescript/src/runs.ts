@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 
-import type { Attribution, RunType } from 'audr';
+import type { Attribution, RunType } from '@openaudr/audr';
 
 import { toolSpanId } from './mapping.js';
 

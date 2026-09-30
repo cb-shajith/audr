@@ -1,7 +1,7 @@
 /** A tool whose `execute` starts another AI SDK call: the child joins the parent's run. */
 import { embed, generateText, isStepCount, type Telemetry, tool } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
-import type { AudrRecord } from 'audr';
+import type { AudrRecord } from '@openaudr/audr';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
@@ -258,7 +258,7 @@ describe('VAI-10 spawned agents join the parent run', () => {
     expect(records).toHaveLength(1);
     expect(records[0]!.run.parent_span_id).toBeUndefined();
     expect(h.logger.warnings).toEqual([
-      'audr-adapter-vercel-ai: ATTRIBUTION_UNRESOLVED (operation=ai.generateText)',
+      '@openaudr/adapter-vercel-ai: ATTRIBUTION_UNRESOLVED (operation=ai.generateText)',
     ]);
   });
 });

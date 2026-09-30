@@ -25,9 +25,10 @@
 
     // Examples import the package by name, exactly as an application does. At run time
     // Node resolves that through the package's own `exports` after a build; the compiler
-    // needs the mapping to check them without one. `audr` resolves through node_modules.
+    // needs the mapping to check them without one. `@openaudr/audr` resolves through
+    // node_modules.
     "paths": {
-      "audr-adapter-vercel-ai": ["./src/index.ts"]
+      "@openaudr/adapter-vercel-ai": ["./src/index.ts"]
     },
 
     "noEmit": true

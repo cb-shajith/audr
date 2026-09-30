@@ -1,14 +1,14 @@
-# audr-adapter-vercel-ai
+# @openaudr/adapter-vercel-ai
 
-[![npm](https://img.shields.io/npm/v/audr-adapter-vercel-ai?include_prereleases)](https://www.npmjs.com/package/audr-adapter-vercel-ai)
-[![Node versions](https://img.shields.io/node/v/audr-adapter-vercel-ai)](https://www.npmjs.com/package/audr-adapter-vercel-ai)
+[![npm](https://img.shields.io/npm/v/@openaudr/adapter-vercel-ai?include_prereleases)](https://www.npmjs.com/package/@openaudr/adapter-vercel-ai)
+[![Node versions](https://img.shields.io/node/v/@openaudr/adapter-vercel-ai)](https://www.npmjs.com/package/@openaudr/adapter-vercel-ai)
 
 > **Status: experimental.** Its public names may change in minor releases until it
 > graduates.
 
 A [Vercel AI SDK](https://ai-sdk.dev) 7 telemetry integration that turns every provider
 model call, client-side tool execution, embedding call and rerank call into one
-[AUDR](https://openaudr.dev/spec/v1.0.0/) record and hands it to an `audr` `Client` your
+[AUDR](https://openaudr.dev/spec/v1.0.0/) record and hands it to an `@openaudr/audr` `Client` your
 application owns. It reads usage, identifiers and timings only: never prompts, messages,
 completions, tool inputs, tool outputs or error messages. The application owns the client
 and its sink, including construction and shutdown.
@@ -16,7 +16,7 @@ and its sink, including construction and shutdown.
 ## Install
 
 ```bash
-npm install audr audr-adapter-vercel-ai ai
+npm install @openaudr/audr @openaudr/adapter-vercel-ai ai
 ```
 
 Requires Node.js 22.12 or later and `ai` 7.0.98 or later within 7.x, the first release
@@ -32,9 +32,9 @@ Register the integration once at startup. Every `generateText`, `streamText`,
 
 ```ts
 import { generateText, registerTelemetry } from 'ai';
-import { Client } from 'audr';
-import { FileSink } from 'audr/file';
-import { audrTelemetry } from 'audr-adapter-vercel-ai';
+import { audrTelemetry } from '@openaudr/adapter-vercel-ai';
+import { Client } from '@openaudr/audr';
+import { FileSink } from '@openaudr/audr/file';
 
 const client = new Client(new FileSink('audr.jsonl'), {
   emitter: { component: 'harness', name: 'my-app', version: '1.0.0' },
@@ -179,8 +179,8 @@ instance meters starts its own run with that instance's attribution. See
   `run.step` is a run-wide ordinal in emission order; a record the `Client` does not queue
   still takes its step, so a gap in the sequence marks a record that was not delivered.
   `run.run_type` is `agent_run` for `generateText` and `streamText`, `single_call` for
-  embeddings and reranking. `run.name` is `telemetry.functionId` when set. The `audr` SDK
-  mints `record_id`, and the `Client` stamps its own `emitter`.
+  embeddings and reranking. `run.name` is `telemetry.functionId` when set. The `@openaudr/audr`
+  SDK mints `record_id`, and the `Client` stamps its own `emitter`.
 - **Timing.** `timing.event_time` is when the operation completed (for a stream, when it
   ended). `timing.duration_ms` is the provider response time, the tool's execution time,
   or the embedding or rerank call's wall time.
@@ -252,7 +252,7 @@ than falling back to the default slug.
   with the hook name and the error class. A record the client does not queue is logged as
   `RECORD_NOT_QUEUED` with the outcome, the operation and each issue as `<code>@<path>`.
 - Diagnostics go to `logger` (default `console`) as
-  `audr-adapter-vercel-ai: <CODE> (<key>=<value>, ...)` and carry AI SDK operation ids
+  `@openaudr/adapter-vercel-ai: <CODE> (<key>=<value>, ...)` and carry AI SDK operation ids
   (`operation=ai.generateText`), hook names, error class names, counts and issue paths,
   never a record value or an error message. `DiagnosticCode` lists every code.
 - `audrTelemetry` throws `ConfigurationError` when `client` has no `record()`,
@@ -269,7 +269,7 @@ provide it, such as Bun, Deno, Vercel Edge Functions and Cloudflare Workers with
 ## Reference
 
 This adapter implements [AUDR v1.0.0](https://openaudr.dev/spec/v1.0.0/) through the
-[`audr`](https://www.npmjs.com/package/audr) SDK. The rules every adapter follows are in
+[`@openaudr/audr`](https://www.npmjs.com/package/@openaudr/audr) SDK. The rules every adapter follows are in
 [`adapters/CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/adapters/CONTRIBUTING.md).
 
 ## Contributing

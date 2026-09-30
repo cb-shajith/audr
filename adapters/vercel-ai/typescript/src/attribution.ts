@@ -1,4 +1,4 @@
-import type { Attribution } from 'audr';
+import type { Attribution } from '@openaudr/audr';
 
 /** The call fields attribution is read from when an operation starts. */
 export interface AttributionSource {

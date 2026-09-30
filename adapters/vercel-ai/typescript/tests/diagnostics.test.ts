@@ -11,23 +11,23 @@ describe('VAI-12 diagnostics carry no values', () => {
         outcome: 'rejected_invalid',
       }),
     ).toBe(
-      'audr-adapter-vercel-ai: RECORD_NOT_QUEUED (outcome=rejected_invalid, operation=ai.generateText, issues=REQUIRED@/attribution/account_id)',
+      '@openaudr/adapter-vercel-ai: RECORD_NOT_QUEUED (outcome=rejected_invalid, operation=ai.generateText, issues=REQUIRED@/attribution/account_id)',
     );
     expect(formatDiagnostic('HOOK_FAILED', { error: 'TypeError', hook: 'onEnd' })).toBe(
-      'audr-adapter-vercel-ai: HOOK_FAILED (hook=onEnd, error=TypeError)',
+      '@openaudr/adapter-vercel-ai: HOOK_FAILED (hook=onEnd, error=TypeError)',
     );
     expect(formatDiagnostic('OPERATION_EVICTED', { count: 3 })).toBe(
-      'audr-adapter-vercel-ai: OPERATION_EVICTED (count=3)',
+      '@openaudr/adapter-vercel-ai: OPERATION_EVICTED (count=3)',
     );
   });
 
   it('VAI-12 skips undefined fields and never includes unknown keys', () => {
     expect(
       formatDiagnostic('ATTRIBUTION_UNRESOLVED', { operation: 'ai.embed', error: undefined }),
-    ).toBe('audr-adapter-vercel-ai: ATTRIBUTION_UNRESOLVED (operation=ai.embed)');
+    ).toBe('@openaudr/adapter-vercel-ai: ATTRIBUTION_UNRESOLVED (operation=ai.embed)');
     const smuggled = { operation: 'ai.embed', account_id: 'acct_42' } as never;
     expect(formatDiagnostic('ATTRIBUTION_UNRESOLVED', smuggled)).not.toContain('acct_42');
-    expect(formatDiagnostic('HOOK_FAILED', {})).toBe('audr-adapter-vercel-ai: HOOK_FAILED');
+    expect(formatDiagnostic('HOOK_FAILED', {})).toBe('@openaudr/adapter-vercel-ai: HOOK_FAILED');
   });
 
   it.each([

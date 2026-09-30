@@ -1,5 +1,5 @@
 {
-  "name": "audr-adapter-vercel-ai",
+  "name": "@openaudr/adapter-vercel-ai",
   "version": "0.1.0",
   "description": "Meter Vercel AI SDK model calls, tool executions, embeddings and reranks as AUDR (Agent Usage Detail Record) v1.0.0 records.",
   "license": "Apache-2.0",
@@ -53,8 +53,8 @@
     "prepack": "npm run build"
   },
   "peerDependencies": {
-    "ai": "^7.0.98",
-    "audr": ">=0.1.0 <0.2.0"
+    "@openaudr/audr": ">=0.1.0 <0.2.0",
+    "ai": "^7.0.98"
   },
   "peerDependenciesMeta": {
     "ai": {
@@ -64,10 +64,10 @@
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@eslint/js": "^10.0.1",
+    "@openaudr/audr": "file:../../core/typescript",
     "@types/node": "^22.19.0",
     "@vitest/coverage-v8": "^5.0.0",
     "ai": "7.0.98",
-    "audr": "file:../../core/typescript",
     "eslint": "^10.10.0",
     "prettier": "^3.9.6",
     "publint": "^0.3.24",

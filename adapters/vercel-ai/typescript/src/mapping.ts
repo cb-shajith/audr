@@ -1,5 +1,5 @@
 import type { LanguageModelUsage } from 'ai';
-import type { LlmUsage, RunType } from 'audr';
+import type { LlmUsage, RunType } from '@openaudr/audr';
 
 /** Written to `run.error_code` on a failed tool execution. */
 export const TOOL_ERROR_CODE = 'VERCEL_AI_TOOL_ERROR';

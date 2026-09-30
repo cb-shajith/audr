@@ -1,7 +1,7 @@
 import { type LanguageModelUsage, simulateReadableStream, type Telemetry } from 'ai';
 import { MockEmbeddingModelV4, MockLanguageModelV4, MockRerankingModelV4 } from 'ai/test';
-import { type AudrRecord, Client, type Logger } from 'audr';
-import { MemorySink } from 'audr/testing';
+import { type AudrRecord, Client, type Logger } from '@openaudr/audr';
+import { MemorySink } from '@openaudr/audr/testing';
 
 import { audrTelemetry, type AudrTelemetryOptions } from '../src/index.js';
 

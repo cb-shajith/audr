@@ -8,10 +8,10 @@ covers changes to the package itself.
 
 ## What this is
 
-`adapters/vercel-ai/typescript` is the `audr-adapter-vercel-ai` npm package: a Vercel AI
-SDK 7 `Telemetry` integration that turns provider model calls, client-side tool
-executions, embedding calls and rerank calls into attributed `AUDR` records for an `audr`
-`Client` the host application owns.
+`adapters/vercel-ai/typescript` is the `@openaudr/adapter-vercel-ai` npm package: a Vercel
+AI SDK 7 `Telemetry` integration that turns provider model calls, client-side tool
+executions, embedding calls and rerank calls into attributed `AUDR` records for an
+`@openaudr/audr` `Client` the host application owns.
 
 ## Layout
 
@@ -84,14 +84,14 @@ The shared toolchain is defined in the top-level
 [`CONTRIBUTING.md`](../../../CONTRIBUTING.md#shared-typescript-toolchain). Specific to this
 package:
 
-- **Peer dependencies:** `ai` (optional) and `audr`. The dev dependency on `ai` is pinned
+- **Peer dependencies:** `ai` (optional) and `@openaudr/audr`. The dev dependency on `ai` is pinned
   exactly to the floor of the `ai` peer range, so CI runs the suite against the oldest
   release the package claims to support. Raise the two together, and only when the adapter
   needs a newer `ai`. The floor is where `embed`, `embedMany` and `rerank` gained
   `runtimeContext`; earlier 7.x releases drop per-call attribution on those calls.
-- **`audr` is a `file:` dependency** on `../../core/typescript` until the `audr` package is
+- **`@openaudr/audr` is a `file:` dependency** on `../../core/typescript` until it is
   published, and the core's `exports` point at its `dist/`, so `make install` installs and
-  builds the core first. Once `audr` is on npm, switch the dev dependency to the registry
+  builds the core first. Once `@openaudr/audr` is on npm, switch the dev dependency to the registry
   range and drop that step from the `Makefile`.
 - **Version:** `package.json` and `src/version.ts`; `tests/public-api.test.ts` keeps them
   equal.
