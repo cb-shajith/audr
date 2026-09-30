@@ -316,13 +316,8 @@ export class Pipeline {
     // would recurse without bound. The callback sees that failure in the `SubmitResult`.
     if (onFailure === undefined || this.#notifying) return;
     this.#notifying = true;
-    try {
-      this.#invoke('onFailure', () =>
-        onFailure({ record, disposition, reason, retryable, detail }),
-      );
-    } finally {
-      this.#notifying = false;
-    }
+    this.#invoke('onFailure', () => onFailure({ record, disposition, reason, retryable, detail }));
+    this.#notifying = false;
   }
 
   #notifyDelivered(batch: readonly InFlight[]): void {
@@ -332,7 +327,7 @@ export class Pipeline {
     this.#invoke('onDelivered', () => onDelivered(sent));
   }
 
-  /** Run a callback without awaiting it, logging whatever it throws or rejects with. */
+  /** Run a callback without awaiting it, logging whatever it throws or rejects with. Never throws. */
   #invoke(name: 'onFailure' | 'onDelivered', callback: () => unknown): void {
     const report = (error: unknown): void => {
       this.#options.logger.warn(`audr: ${name} callback threw (${errorName(error)})`);
