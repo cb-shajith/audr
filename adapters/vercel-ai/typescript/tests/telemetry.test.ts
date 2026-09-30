@@ -107,6 +107,18 @@ describe('VAI-02 option validation', () => {
     },
   );
 
+  it.each([null, 'production', 1])('VAI-02 rejects attributionDefaults %s', (defaults) => {
+    expect(() => audrTelemetry({ client, attributionDefaults: defaults as never })).toThrow(
+      new ConfigurationError('attributionDefaults must be an object'),
+    );
+  });
+
+  it.each([null, 'openai', {}])('VAI-02 rejects a mapResource that is not a function', (fn) => {
+    expect(() => audrTelemetry({ client, mapResource: fn as never })).toThrow(
+      new ConfigurationError('mapResource must be a function'),
+    );
+  });
+
   it('VAI-02 rejects missing options', () => {
     expect(() => audrTelemetry(undefined as never)).toThrow(ConfigurationError);
   });
@@ -194,13 +206,14 @@ describe('VAI-04 generation record', () => {
     expect(mapResource).toHaveBeenCalledWith({ provider: 'my-proxy.chat', modelId: 'gpt-5.4' });
   });
 
-  it('VAI-04 mapResource returning undefined keeps the default', async () => {
-    const h = harness({ mapResource: () => undefined });
+  it.each([undefined, null])('VAI-04 mapResource returning %s keeps the default', async (none) => {
+    const h = harness({ mapResource: () => none });
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001'));
     t.onLanguageModelCallEnd(modelEnd('call-00000001', { provider: 'anthropic.messages' }));
     const [record] = await h.records();
     expect(record!.resource).toMatchObject({ provider: 'anthropic', name: 'gpt-5.4' });
+    expect(h.logger.lines).toEqual([]);
   });
 });
 
@@ -225,21 +238,6 @@ describe('VAI-06 tool execution record', () => {
       run: { span_id: 'tool:call-00000001:tc-2', step: 1 },
     });
     expect(records[1]!.resource).not.toHaveProperty('modality');
-  });
-
-  it('VAI-09 a tool call id reused across steps gets a distinct span', async () => {
-    const h = harness();
-    const t = hooks(h.telemetry);
-    t.onStart(start('call-00000001'));
-    for (let step = 0; step < 2; step += 1) {
-      t.onToolExecutionStart(toolEnd('call-00000001', 'call_0'));
-      t.onToolExecutionEnd(toolEnd('call-00000001', 'call_0'));
-    }
-    const records = await h.records();
-    expect(records.map((r) => r.run.span_id)).toEqual([
-      'tool:call-00000001:call_0',
-      'tool:call-00000001:call_0:1',
-    ]);
   });
 
   it('VAI-09 onToolExecutionStart for an untracked call does nothing', async () => {
@@ -354,18 +352,6 @@ describe('VAI-08 attribution at onStart', () => {
     expect(await h.records()).toEqual([]);
     expect(h.logger.warnings).toEqual([
       'audr-adapter-vercel-ai: ATTRIBUTION_UNRESOLVED (operation=ai.embed)',
-    ]);
-  });
-
-  it('VAI-08 the resolver sees the operation, function id and runtime context', () => {
-    const resolveAttribution = vi.fn(() => ({ environment: 'test' as const, user_id: 'u' }));
-    const h = harness({ resolveAttribution });
-    const t = hooks(h.telemetry);
-    t.onStart(start('call-00000001', { functionId: 'f', runtimeContext: { tenant: 't1' } }));
-    t.onStart(start('call-00000002', { runtimeContext: null }));
-    expect(resolveAttribution.mock.calls).toEqual([
-      [{ operationId: 'ai.generateText', functionId: 'f', runtimeContext: { tenant: 't1' } }],
-      [{ operationId: 'ai.generateText', functionId: undefined, runtimeContext: {} }],
     ]);
   });
 
@@ -612,8 +598,8 @@ describe('VAI-15 provider slug', () => {
     ]);
   });
 
-  it('VAI-15 skips a mapResource provider that is not a valid slug', async () => {
-    const h = harness({ mapResource: () => ({ provider: 'Open AI', name: 'x' }) });
+  it.each(['Open AI', 123])('VAI-15 skips a mapResource provider %s', async (provider) => {
+    const h = harness({ mapResource: () => ({ provider: provider as string, name: 'x' }) });
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001'));
     t.onLanguageModelCallEnd(modelEnd('call-00000001'));

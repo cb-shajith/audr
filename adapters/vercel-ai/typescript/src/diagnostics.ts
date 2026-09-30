@@ -3,7 +3,6 @@ import type { Logger, SubmitResult } from 'audr';
 /** Stable codes for every diagnostic the adapter logs. Codes are added, never removed. */
 export type DiagnosticCode =
   | 'ATTRIBUTION_UNRESOLVED'
-  | 'RESOLVER_FAILED'
   | 'MAP_RESOURCE_FAILED'
   | 'PROVIDER_UNMAPPED'
   | 'OPERATION_UNSUPPORTED'

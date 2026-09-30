@@ -95,57 +95,29 @@ describe('VAI-08 merge', () => {
 
 describe('VAI-08 resolution', () => {
   it('VAI-08 defaults only', () => {
-    expect(resolveAttribution(source(), { environment: 'test' }, undefined)).toEqual({
+    expect(resolveAttribution(source(), { environment: 'test' })).toEqual({
       kind: 'resolved',
       attribution: { environment: 'test' },
     });
   });
 
   it('VAI-08 per-call only', () => {
-    expect(
-      resolveAttribution(source({ audr: { environment: 'staging' } }), undefined, undefined),
-    ).toEqual({ kind: 'resolved', attribution: { environment: 'staging' } });
+    expect(resolveAttribution(source({ audr: { environment: 'staging' } }), undefined)).toEqual({
+      kind: 'resolved',
+      attribution: { environment: 'staging' },
+    });
   });
 
   it('VAI-08 nothing resolves', () => {
-    expect(resolveAttribution(source(), { account_id: 'a' }, undefined)).toEqual({
+    expect(resolveAttribution(source(), { account_id: 'a' })).toEqual({
       kind: 'unresolved',
     });
   });
 
-  it('VAI-08 a resolver replaces the default reader', () => {
-    const seen: AttributionSource[] = [];
-    const resolution = resolveAttribution(
-      source({ audr: { account_id: 'ignored' }, tenant: 't' }),
-      { environment: 'test' },
-      (s) => {
-        seen.push(s);
-        return { account_id: `acct-${String(s.runtimeContext.tenant)}` };
-      },
-    );
-    expect(resolution).toEqual({
-      kind: 'resolved',
-      attribution: { environment: 'test', account_id: 'acct-t' },
-    });
-    expect(seen).toHaveLength(1);
-  });
-
-  it('VAI-08 a resolver returning undefined or a non-object leaves the defaults', () => {
-    expect(resolveAttribution(source(), { environment: 'test' }, () => undefined)).toEqual({
+  it('VAI-08 a non-object audr value leaves the defaults', () => {
+    expect(resolveAttribution(source({ audr: 'acct' }), { environment: 'test' })).toEqual({
       kind: 'resolved',
       attribution: { environment: 'test' },
     });
-    expect(resolveAttribution(source(), { environment: 'test' }, () => 'acct' as never)).toEqual({
-      kind: 'resolved',
-      attribution: { environment: 'test' },
-    });
-  });
-
-  it('VAI-08 a throwing resolver reports the error class only', () => {
-    expect(
-      resolveAttribution(source(), { environment: 'test' }, () => {
-        throw new SyntaxError('secret');
-      }),
-    ).toEqual({ kind: 'resolver_failed', error: 'SyntaxError' });
   });
 });

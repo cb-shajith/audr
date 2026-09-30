@@ -52,6 +52,10 @@ await generateText({
 await client.shutdown();
 ```
 
+Register exactly one integration per client. Every registered integration meters every
+call on its own, so registering a second one (for example on each hot reload of a module
+that calls `registerTelemetry`) records each operation twice.
+
 To meter a single call instead, pass the integration per call. A single-tenant
 application can put its `account_id` in the defaults:
 
@@ -108,28 +112,13 @@ await generateText({
 - **`includeRuntimeContext: { audr: true }` is required.** The AI SDK strips every
   `runtimeContext` key not whitelisted there before integrations see it. Without it, only
   `attributionDefaults` apply.
-- The default reader keeps `environment`, `user_id`, `account_id` and `subscription_id`
-  when each is a string, and `labels` when it is an object of strings. Anything else is
-  dropped. The `Client` validates the rest; for example a `production` record without
-  `account_id` is rejected and logged.
+- The reader keeps `environment`, `user_id`, `account_id` and `subscription_id` when each
+  is a string, and `labels` when it is an object of strings. Anything else is dropped. The
+  `Client` validates the rest; for example a `production` record without `account_id` is
+  rejected and logged.
 - Omit `environment` from `attributionDefaults` to require it on every call. An operation
   whose attribution has no `environment` is skipped with an `ATTRIBUTION_UNRESOLVED`
   warning rather than billed to a guess.
-- `resolveAttribution` replaces the default reader, for applications that keep tenancy
-  elsewhere in `runtimeContext`. It receives the operation id, `telemetry.functionId` and
-  the filtered `runtimeContext`; returning `undefined` means "defaults only". If it
-  throws, the operation is skipped with a `RESOLVER_FAILED` warning.
-
-```ts
-audrTelemetry({
-  client,
-  attributionDefaults: { environment: 'production' },
-  resolveAttribution: ({ runtimeContext }) => {
-    const tenant = runtimeContext.tenant;
-    return typeof tenant === 'string' ? { account_id: tenant } : undefined;
-  },
-});
-```
 
 ### `ToolLoopAgent`
 
@@ -253,8 +242,10 @@ than falling back to the default slug.
 ## Operational bounds
 
 - `maxTrackedOperations` (default 10000) bounds the operations tracked at once, each
-  sub-agent call counting as one. Past the bound the oldest is evicted with an
-  `OPERATION_EVICTED` warning, and its later events produce no records.
+  sub-agent call counting as one. Past the bound the operation with no event for the
+  longest time is evicted with an `OPERATION_EVICTED` warning, and its later events
+  produce no records. A sub-agent's events keep the operations that spawned it in use, so
+  an abandoned stream is evicted before a live agent waiting on a tool.
   Everything else the adapter holds, such as embed and rerank start times, belongs to an
   operation and is released with it.
 - Hooks never throw into the AI SDK. An exception inside one is logged as `HOOK_FAILED`
@@ -264,9 +255,9 @@ than falling back to the default slug.
   `audr-adapter-vercel-ai: <CODE> (<key>=<value>, ...)` and carry AI SDK operation ids
   (`operation=ai.generateText`), hook names, error class names, counts and issue paths,
   never a record value or an error message. `DiagnosticCode` lists every code.
-- `audrTelemetry` throws `ConfigurationError` when `client` has no `record()` or
-  `maxTrackedOperations` is not an integer of at least 1. Nothing else in the package
-  throws.
+- `audrTelemetry` throws `ConfigurationError` when `client` has no `record()`,
+  `maxTrackedOperations` is not an integer of at least 1, `attributionDefaults` is not an
+  object or `mapResource` is not a function. Nothing else in the package throws.
 
 ## Runtime support
 

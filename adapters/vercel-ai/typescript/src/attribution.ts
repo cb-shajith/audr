@@ -1,8 +1,6 @@
 import type { Attribution } from 'audr';
 
-import { errorName } from './diagnostics.js';
-
-/** What a host resolver sees when an operation starts. */
+/** The call fields attribution is read from when an operation starts. */
 export interface AttributionSource {
   /** `ai.generateText`, `ai.streamText`, `ai.embed`, `ai.embedMany`, `ai.rerank`, ... */
   readonly operationId: string;
@@ -12,17 +10,14 @@ export interface AttributionSource {
   readonly runtimeContext: Readonly<Record<string, unknown>>;
 }
 
-export type AttributionResolver = (source: AttributionSource) => Attribution | undefined;
-
 export type Resolution =
   | { readonly kind: 'resolved'; readonly attribution: Attribution }
-  | { readonly kind: 'unresolved' }
-  | { readonly kind: 'resolver_failed'; readonly error: string };
+  | { readonly kind: 'unresolved' };
 
 const STRING_FIELDS = ['environment', 'user_id', 'account_id', 'subscription_id'] as const;
 
 /**
- * The default per-call reader: `runtimeContext.audr`, keeping `environment`, `user_id`,
+ * The per-call reader: `runtimeContext.audr`, keeping `environment`, `user_id`,
  * `account_id` and `subscription_id` when each is a string and `labels` when it is a plain
  * object of strings. Everything else is dropped; the client validates what remains.
  */
@@ -65,15 +60,8 @@ export function mergeAttribution(
 export function resolveAttribution(
   source: AttributionSource,
   defaults: Attribution | undefined,
-  resolver: AttributionResolver | undefined,
 ): Resolution {
-  let perCall: Attribution | undefined;
-  try {
-    perCall = (resolver ?? readRuntimeAttribution)(source);
-  } catch (error) {
-    return { kind: 'resolver_failed', error: errorName(error) };
-  }
-  const attribution = mergeAttribution(defaults, isPlainObject(perCall) ? perCall : undefined);
+  const attribution = mergeAttribution(defaults, readRuntimeAttribution(source));
   return attribution.environment === undefined
     ? { kind: 'unresolved' }
     : { kind: 'resolved', attribution };

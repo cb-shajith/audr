@@ -10,11 +10,7 @@ import {
   type Usage,
 } from 'audr';
 
-import {
-  type AttributionResolver,
-  type AttributionSource,
-  resolveAttribution,
-} from './attribution.js';
+import { type AttributionSource, resolveAttribution } from './attribution.js';
 import { Diagnostics, errorName, formatIssues } from './diagnostics.js';
 import {
   counter,
@@ -31,11 +27,12 @@ import {
   toLlmUsage,
 } from './mapping.js';
 import {
+  CallTracker,
   closeToolSpan,
   openToolSpan,
-  type RunState,
-  RunTracker,
-  type SpawnContext,
+  type ToolSpan,
+  toolSpanFor,
+  type TrackedCall,
 } from './runs.js';
 
 const DEFAULT_MAX_TRACKED_OPERATIONS = 10_000;
@@ -45,10 +42,9 @@ export interface AudrTelemetryOptions {
   readonly client: Client;
   /** Applied field by field under per-call attribution. Omit `environment` to require it per call. */
   readonly attributionDefaults?: Attribution | undefined;
-  /** Replaces the default reader of `runtimeContext.audr`. Returning `undefined` means "no per-call attribution". */
-  readonly resolveAttribution?: AttributionResolver | undefined;
-  /** Overrides the provider slug and model name for a model call. Returning `undefined` keeps the default; throwing skips the record. */
-  readonly mapResource?: ((source: ResourceSource) => ResourceMapping | undefined) | undefined;
+  /** Overrides the provider slug and model name for a model call. Returning `undefined` or `null` keeps the default; throwing skips the record. */
+  readonly mapResource?:
+    ((source: ResourceSource) => ResourceMapping | null | undefined) | undefined;
   /** Upper bound on concurrently tracked operations, sub-agents included. Integer >= 1. Default 10_000. */
   readonly maxTrackedOperations?: number | undefined;
   /** Where diagnostics go. Default `console`. Messages never carry record values. */
@@ -72,7 +68,7 @@ type EventOf<K extends keyof Telemetry> = Parameters<NonNullable<Telemetry[K]>>[
 
 type ModelOperation = Extract<Operation, 'generation' | 'embedding' | 'reranking'>;
 
-interface Measured {
+interface RecordParts {
   readonly spanId: string;
   readonly durationMs: number | undefined;
   readonly resource: Resource;
@@ -99,11 +95,9 @@ export function audrTelemetry(options: AudrTelemetryOptions): Telemetry {
 class AudrTelemetry implements Telemetry {
   readonly #client: Client;
   readonly #defaults: Attribution | undefined;
-  readonly #resolver: AttributionResolver | undefined;
   readonly #mapResource: AudrTelemetryOptions['mapResource'];
   readonly #diagnostics: Diagnostics;
-  readonly #runs: RunTracker;
-  /** Unsupported operation ids already warned about, so each is logged once. */
+  readonly #tracker: CallTracker;
   readonly #warnedUnsupported = new Set<string>();
 
   constructor(options: AudrTelemetryOptions) {
@@ -115,47 +109,45 @@ class AudrTelemetry implements Telemetry {
     if (!Number.isInteger(maxTrackedOperations) || maxTrackedOperations < 1) {
       throw new ConfigurationError('maxTrackedOperations must be an integer >= 1');
     }
+    const defaults: unknown = options.attributionDefaults;
+    if (defaults !== undefined && (typeof defaults !== 'object' || defaults === null)) {
+      throw new ConfigurationError('attributionDefaults must be an object');
+    }
+    const mapResource: unknown = options.mapResource;
+    if (mapResource !== undefined && typeof mapResource !== 'function') {
+      throw new ConfigurationError('mapResource must be a function');
+    }
     this.#client = options.client;
     this.#defaults = options.attributionDefaults;
-    this.#resolver = options.resolveAttribution;
     this.#mapResource = options.mapResource;
     this.#diagnostics = new Diagnostics(options.logger ?? console);
-    this.#runs = new RunTracker(maxTrackedOperations);
+    this.#tracker = new CallTracker(maxTrackedOperations);
   }
 
   onStart(event: EventOf<'onStart'>): void {
     this.#guard('onStart', () => {
       if (!isSupportedOperation(event.operationId)) {
-        if (!this.#warnedUnsupported.has(event.operationId)) {
-          this.#warnedUnsupported.add(event.operationId);
-          this.#diagnostics.warn('OPERATION_UNSUPPORTED', { operation: event.operationId });
-        }
+        this.#warnUnsupportedOnce(event.operationId);
         return;
       }
-      const parent = this.#runs.spawningSpan();
-      if (parent !== undefined) {
-        this.#reportEvicted(this.#runs.beginSpawned(event.callId, event.operationId, parent));
+      const toolSpan = this.#tracker.currentToolSpan();
+      if (toolSpan !== undefined) {
+        this.#warnIfEvicted(this.#tracker.startChild(event.callId, event.operationId, toolSpan));
         return;
       }
       const source: AttributionSource = {
         operationId: event.operationId,
         functionId: nonEmpty(event.functionId),
-        runtimeContext: recordOf('runtimeContext' in event ? event.runtimeContext : undefined),
+        runtimeContext: asObject('runtimeContext' in event ? event.runtimeContext : undefined),
       };
-      const resolution = resolveAttribution(source, this.#defaults, this.#resolver);
+      const resolution = resolveAttribution(source, this.#defaults);
       switch (resolution.kind) {
-        case 'resolver_failed':
-          this.#diagnostics.warn('RESOLVER_FAILED', {
-            operation: event.operationId,
-            error: resolution.error,
-          });
-          return;
         case 'unresolved':
           this.#diagnostics.warn('ATTRIBUTION_UNRESOLVED', { operation: event.operationId });
           return;
         case 'resolved':
-          this.#reportEvicted(
-            this.#runs.beginRoot({
+          this.#warnIfEvicted(
+            this.#tracker.startRoot({
               callId: event.callId,
               operationId: event.operationId,
               attribution: resolution.attribution,
@@ -174,12 +166,12 @@ class AudrTelemetry implements Telemetry {
 
   onLanguageModelCallEnd(event: EventOf<'onLanguageModelCallEnd'>): void {
     this.#guard('onLanguageModelCallEnd', () => {
-      const run = this.#runs.get(event.callId);
-      if (run === undefined) return;
-      const resource = this.#modelResource(run, event.provider, event.modelId, 'generation');
+      const call = this.#tracker.get(event.callId);
+      if (call === undefined) return;
+      const resource = this.#modelResource(call, event.provider, event.modelId, 'generation');
       if (resource === undefined) return;
-      this.#submit(run, {
-        spanId: modelSpanId(event.callId, run.modelCalls++),
+      this.#record(call, {
+        spanId: modelSpanId(event.callId, call.modelCalls++),
         durationMs: durationMs(event.performance.responseTimeMs),
         resource: { ...resource, modality: 'text' },
         usage: { llm: toLlmUsage(event.usage) },
@@ -189,18 +181,18 @@ class AudrTelemetry implements Telemetry {
 
   onToolExecutionStart(event: EventOf<'onToolExecutionStart'>): void {
     this.#guard('onToolExecutionStart', () => {
-      const run = this.#runs.get(event.callId);
-      if (run === undefined) return;
-      openToolSpan(run, event.callId, event.toolCall.toolCallId);
+      const call = this.#tracker.get(event.callId);
+      if (call === undefined) return;
+      openToolSpan(call, event.toolCall.toolCallId);
     });
   }
 
   onToolExecutionEnd(event: EventOf<'onToolExecutionEnd'>): void {
     this.#guard('onToolExecutionEnd', () => {
-      const run = this.#runs.get(event.callId);
-      if (run === undefined) return;
-      this.#submit(run, {
-        spanId: closeToolSpan(run, event.callId, event.toolCall.toolCallId),
+      const call = this.#tracker.get(event.callId);
+      if (call === undefined) return;
+      this.#record(call, {
+        spanId: closeToolSpan(call, event.toolCall.toolCallId),
         durationMs: durationMs(event.toolExecutionMs),
         resource: {
           provider: TOOL_PROVIDER,
@@ -217,20 +209,20 @@ class AudrTelemetry implements Telemetry {
 
   onEmbedStart(event: EventOf<'onEmbedStart'>): void {
     this.#guard('onEmbedStart', () => {
-      this.#runs.get(event.callId)?.embedStarts.set(event.embedCallId, performance.now());
+      this.#tracker.get(event.callId)?.embedStartTimes.set(event.embedCallId, performance.now());
     });
   }
 
   onEmbedEnd(event: EventOf<'onEmbedEnd'>): void {
     this.#guard('onEmbedEnd', () => {
-      const run = this.#runs.get(event.callId);
-      if (run === undefined) return;
-      const startedAt = run.embedStarts.get(event.embedCallId);
-      run.embedStarts.delete(event.embedCallId);
-      const resource = this.#modelResource(run, event.provider, event.modelId, 'embedding');
+      const call = this.#tracker.get(event.callId);
+      if (call === undefined) return;
+      const startedAt = call.embedStartTimes.get(event.embedCallId);
+      call.embedStartTimes.delete(event.embedCallId);
+      const resource = this.#modelResource(call, event.provider, event.modelId, 'embedding');
       if (resource === undefined) return;
       const inputTokens = counter(event.usage.tokens);
-      this.#submit(run, {
+      this.#record(call, {
         spanId: embedSpanId(event.embedCallId),
         durationMs: elapsedSince(startedAt),
         resource: { ...resource, modality: 'text' },
@@ -246,21 +238,21 @@ class AudrTelemetry implements Telemetry {
 
   onRerankStart(event: EventOf<'onRerankStart'>): void {
     this.#guard('onRerankStart', () => {
-      const run = this.#runs.get(event.callId);
-      if (run !== undefined) run.rerankStartedAt = performance.now();
+      const call = this.#tracker.get(event.callId);
+      if (call !== undefined) call.rerankStartedAt = performance.now();
     });
   }
 
   onRerankEnd(event: EventOf<'onRerankEnd'>): void {
     this.#guard('onRerankEnd', () => {
-      const run = this.#runs.get(event.callId);
-      if (run === undefined) return;
-      const startedAt = run.rerankStartedAt;
-      run.rerankStartedAt = undefined;
-      const resource = this.#modelResource(run, event.provider, event.modelId, 'reranking');
+      const call = this.#tracker.get(event.callId);
+      if (call === undefined) return;
+      const startedAt = call.rerankStartedAt;
+      call.rerankStartedAt = undefined;
+      const resource = this.#modelResource(call, event.provider, event.modelId, 'reranking');
       if (resource === undefined) return;
-      this.#submit(run, {
-        spanId: rerankSpanId(event.callId, run.rerankCalls++),
+      this.#record(call, {
+        spanId: rerankSpanId(event.callId, call.rerankCalls++),
         durationMs: elapsedSince(startedAt),
         resource: { ...resource, modality: 'text' },
         usage: { llm: { requests: 1 } },
@@ -270,13 +262,13 @@ class AudrTelemetry implements Telemetry {
 
   onEnd(event: EventOf<'onEnd'>): void {
     this.#guard('onEnd', () => {
-      this.#runs.end(event.callId);
+      this.#tracker.end(event.callId);
     });
   }
 
   onAbort(event: EventOf<'onAbort'>): void {
     this.#guard('onAbort', () => {
-      this.#runs.end(event.callId);
+      this.#tracker.end(event.callId);
     });
   }
 
@@ -285,7 +277,7 @@ class AudrTelemetry implements Telemetry {
       // The payload is `{ callId, error }`; the error is never read.
       if (typeof event !== 'object' || event === null) return;
       const callId: unknown = (event as { readonly callId?: unknown }).callId;
-      if (typeof callId === 'string') this.#runs.end(callId);
+      if (typeof callId === 'string') this.#tracker.end(callId);
     });
   }
 
@@ -298,21 +290,16 @@ class AudrTelemetry implements Telemetry {
     readonly toolCallId: string;
     readonly execute: () => PromiseLike<T>;
   }): PromiseLike<T> {
-    let context: SpawnContext | undefined;
+    let span: ToolSpan | undefined;
     try {
-      const run = this.#runs.get(options.callId);
-      if (run !== undefined) {
-        const spanId =
-          run.openTools.get(options.toolCallId) ??
-          openToolSpan(run, options.callId, options.toolCallId);
-        context = { run, spanId };
-      }
+      const call = this.#tracker.get(options.callId);
+      if (call !== undefined) span = { call, spanId: toolSpanFor(call, options.toolCallId) };
     } catch (error) {
       this.#diagnostics.error('HOOK_FAILED', { hook: 'executeTool', error: errorName(error) });
     }
-    return context === undefined
+    return span === undefined
       ? options.execute()
-      : this.#runs.runInSpan(context, options.execute);
+      : this.#tracker.runInToolSpan(span, options.execute);
   }
 
   /**
@@ -321,56 +308,62 @@ class AudrTelemetry implements Telemetry {
    * to the default slug the host chose to override.
    */
   #modelResource(
-    run: RunState,
+    call: TrackedCall,
     provider: string,
     modelId: string,
     operation: ModelOperation,
   ): Resource | undefined {
-    let mapped: ResourceMapping | undefined;
+    let mapped: ResourceMapping | null | undefined;
     try {
       mapped = this.#mapResource?.({ provider, modelId });
     } catch (error) {
       this.#diagnostics.warn('MAP_RESOURCE_FAILED', {
-        operation: run.operationId,
+        operation: call.operationId,
         error: errorName(error),
       });
       return undefined;
     }
-    const slug = mapped === undefined ? providerSlug(provider) : mapped.provider;
-    if (slug === undefined || !isProviderSlug(slug)) {
-      this.#diagnostics.warn('PROVIDER_UNMAPPED', { operation: run.operationId });
+    const slug = mapped == null ? providerSlug(provider) : mapped.provider;
+    if (!isProviderSlug(slug)) {
+      this.#diagnostics.warn('PROVIDER_UNMAPPED', { operation: call.operationId });
       return undefined;
     }
     return { provider: slug, type: 'model', name: mapped?.name ?? modelId, operation };
   }
 
-  #submit(run: RunState, measured: Measured): void {
+  #record(call: TrackedCall, parts: RecordParts): void {
     const record = createRecord({
-      timing: measured.durationMs === undefined ? {} : { duration_ms: measured.durationMs },
-      resource: measured.resource,
-      usage: measured.usage,
+      timing: parts.durationMs === undefined ? {} : { duration_ms: parts.durationMs },
+      resource: parts.resource,
+      usage: parts.usage,
       run: {
-        run_id: run.runId,
-        span_id: measured.spanId,
-        step: run.counter.next++,
-        run_type: run.runType,
-        ...(run.parentSpanId === undefined ? {} : { parent_span_id: run.parentSpanId }),
-        ...(run.name === undefined ? {} : { name: run.name }),
-        ...(measured.errorCode === undefined ? {} : { error_code: measured.errorCode }),
+        run_id: call.runId,
+        span_id: parts.spanId,
+        step: call.steps.next++,
+        run_type: call.runType,
+        ...(call.parentSpanId === undefined ? {} : { parent_span_id: call.parentSpanId }),
+        ...(call.name === undefined ? {} : { name: call.name }),
+        ...(parts.errorCode === undefined ? {} : { error_code: parts.errorCode }),
       },
-      attribution: run.attribution,
+      attribution: call.attribution,
     });
     const result = this.#client.record(record);
     if (!result.queued) {
       this.#diagnostics.warn('RECORD_NOT_QUEUED', {
         outcome: result.outcome,
-        operation: run.operationId,
+        operation: call.operationId,
         issues: formatIssues(result),
       });
     }
   }
 
-  #reportEvicted(count: number): void {
+  #warnUnsupportedOnce(operationId: string): void {
+    if (this.#warnedUnsupported.has(operationId)) return;
+    this.#warnedUnsupported.add(operationId);
+    this.#diagnostics.warn('OPERATION_UNSUPPORTED', { operation: operationId });
+  }
+
+  #warnIfEvicted(count: number): void {
     if (count > 0) this.#diagnostics.warn('OPERATION_EVICTED', { count });
   }
 
@@ -392,6 +385,6 @@ function nonEmpty(value: string | undefined): string | undefined {
   return value === undefined || value.length === 0 ? undefined : value;
 }
 
-function recordOf(value: unknown): Readonly<Record<string, unknown>> {
+function asObject(value: unknown): Readonly<Record<string, unknown>> {
   return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
 }

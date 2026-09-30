@@ -65,8 +65,8 @@ function withoutUndefined<T extends object>(value: T): T {
 }
 
 /** Whether `slug` is a valid AUDR `resource.provider`. */
-export function isProviderSlug(slug: string): boolean {
-  return SLUG.test(slug);
+export function isProviderSlug(slug: unknown): slug is string {
+  return typeof slug === 'string' && SLUG.test(slug);
 }
 
 /**

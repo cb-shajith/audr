@@ -137,21 +137,4 @@ describe('VAI-12 no payloads, no values in diagnostics', () => {
       expect(line).not.toContain(SENTINEL);
     }
   });
-
-  it('VAI-12 a resolver error message is never logged', async () => {
-    const h = harness({
-      resolveAttribution: () => {
-        throw new RangeError(SENTINEL);
-      },
-    });
-    await generateText({
-      model: leakyModel(),
-      prompt: 'x',
-      telemetry: { integrations: [h.telemetry] },
-    });
-    expect(await h.records()).toEqual([]);
-    expect(h.logger.warnings).toEqual([
-      'audr-adapter-vercel-ai: RESOLVER_FAILED (operation=ai.generateText, error=RangeError)',
-    ]);
-  });
 });

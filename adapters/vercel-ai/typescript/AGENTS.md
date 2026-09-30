@@ -19,8 +19,8 @@ executions, embedding calls and rerank calls into attributed `AUDR` records for 
 | --- | --- |
 | `src/index.ts` | The public exports, pinned by `tests/public-api.test.ts` |
 | `src/telemetry.ts` | `audrTelemetry`, option validation, and every `Telemetry` hook |
-| `src/attribution.ts` | The `runtimeContext.audr` reader, the merge over defaults, resolver error capture |
-| `src/runs.ts` | `RunTracker` with its per-instance `AsyncLocalStorage` spawn context, `BoundedMap`, per-operation state and unique tool span allocation |
+| `src/attribution.ts` | The `runtimeContext.audr` reader and the merge over defaults |
+| `src/runs.ts` | `CallTracker`, the one module-level `AsyncLocalStorage` of active tool spans each tracker filters by owner, `LruMap`, per-call state and unique tool span allocation |
 | `src/mapping.ts` | Pure functions: token arithmetic, provider slugs, span ids, run type, supported operations |
 | `src/diagnostics.ts` | `DiagnosticCode`, the message format, `errorName` |
 | `tests/` | The Vitest suite; test names carry the requirement they cover (`VAI-nn`, below) |
@@ -55,7 +55,9 @@ matching tests; a new behaviour takes the next number.
 
 1. `ai` is an optional peer dependency. Import only its types (`import type`); ESLint
    rejects a value import in `src/`, and `tests/public-api.test.ts` checks the emitted
-   JavaScript. The only Node API is `AsyncLocalStorage`, imported in `src/runs.ts` alone.
+   JavaScript. The only Node API is `AsyncLocalStorage`, imported in `src/runs.ts` alone
+   and instantiated once per process: under Node 22 every instance that has ever run stays
+   registered and slows every async operation, so never create one per integration.
 2. Read no payloads. Never read prompts, instructions, messages, content, provider
    metadata, tool inputs, tool outputs, tool errors, embeddings, documents, queries or
    rankings. From a tool's result read only the `toolOutput.type` discriminator.
