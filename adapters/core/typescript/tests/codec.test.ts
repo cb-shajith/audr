@@ -53,6 +53,15 @@ describe('parseRecord', () => {
   it('rejects a value that is not an object', () => {
     expect(issuesOf(() => parseRecord(42))).toEqual([['INVALID_TYPE', '/']]);
   });
+
+  it('throws ValidationError for a value that throws while it is read', () => {
+    const trapped = new Proxy(makeRecord(), {
+      ownKeys: () => {
+        throw new TypeError('trap');
+      },
+    });
+    expect(issuesOf(() => parseRecord(trapped))).toEqual([['INVALID_TYPE', '/']]);
+  });
 });
 
 describe('decodeRecord', () => {
@@ -95,5 +104,20 @@ describe('encodeRecord', () => {
     expect(issuesOf(() => encodeRecord(record))).toEqual([
       ['INVALID_TYPE', '/usage/llm/input_tokens'],
     ]);
+  });
+
+  it.each([
+    ['an array', [3, 'x', { b: 1 }]],
+    ['a Date', new Date()],
+    ['a Map', new Map([['b', 1]])],
+  ])('rejects %s, which no AUDR record holds', (_what, value) => {
+    const record = { ...makeRecord(), x_extra: value };
+    expect(issuesOf(() => encodeRecord(record))).toEqual([['INVALID_TYPE', '/x_extra']]);
+  });
+
+  it('encodes an object without a prototype', () => {
+    const labels = Object.assign(Object.create(null) as Record<string, string>, { team: 'a' });
+    const record = { ...makeRecord(), labels };
+    expect(JSON.parse(encodeRecord(record))).toMatchObject({ labels: { team: 'a' } });
   });
 });

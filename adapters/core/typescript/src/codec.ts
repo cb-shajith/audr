@@ -1,7 +1,7 @@
 import { issue, ValidationError } from './errors.js';
+import { SUPPORTED_SPEC_VERSION } from './generated-schema.js';
 import { type AudrRecord } from './record.js';
-import { isObject, SUPPORTED_SPEC_VERSION } from './schema.js';
-import { pointer, validate } from './validate.js';
+import { isObject, pointer, validate } from './validate.js';
 
 /**
  * Parse an already-decoded record, throwing `ValidationError` with every issue it has.
@@ -9,7 +9,8 @@ import { pointer, validate } from './validate.js';
  * A payload that omits `spec_version`, or declares a release this package does not
  * implement, is rejected on that alone rather than as a cascade of field errors.
  */
-export function parseRecord(data: unknown): AudrRecord {
+export function parseRecord(input: unknown): AudrRecord {
+  const data = cloneInput(input);
   if (isObject(data)) {
     const declared = data.spec_version;
     if (declared === undefined) {
@@ -23,7 +24,16 @@ export function parseRecord(data: unknown): AudrRecord {
   if (issues.length > 0) {
     throw new ValidationError(issues);
   }
-  return structuredClone(data as AudrRecord);
+  return data as AudrRecord;
+}
+
+function cloneInput(input: unknown): unknown {
+  try {
+    return structuredClone(input);
+  } catch {
+    const issues = validate(input);
+    throw new ValidationError(issues.length > 0 ? issues : [issue('INVALID_TYPE', '/')]);
+  }
 }
 
 /** Parse a JSON record, throwing `ValidationError` with every issue it has. */
@@ -40,7 +50,8 @@ export function decodeRecord(json: string): AudrRecord {
 /**
  * The record as JSON with keys sorted at every level; compact unless `indent` is given.
  * Throws `ValidationError` for a number JSON cannot represent (`NaN`, `±Infinity`), which
- * `JSON.stringify` would otherwise write as `null`.
+ * `JSON.stringify` would otherwise write as `null`, and for an array or non-plain object
+ * such as a `Date`, which no AUDR record holds.
  */
 export function encodeRecord(
   record: AudrRecord,
@@ -55,6 +66,9 @@ function sortKeys(value: unknown, path: readonly string[]): unknown {
     throw new ValidationError([issue('INVALID_TYPE', pointer(path))]);
   }
   if (typeof value === 'object' && value !== null) {
+    if (!isPlainObject(value)) {
+      throw new ValidationError([issue('INVALID_TYPE', pointer(path))]);
+    }
     const entries = Object.entries(value).filter(([, field]) => field !== undefined);
     entries.sort(([a], [b]) => (a < b ? -1 : 1));
     return Object.fromEntries(
@@ -62,4 +76,10 @@ function sortKeys(value: unknown, path: readonly string[]): unknown {
     );
   }
   return value;
+}
+
+function isPlainObject(value: unknown): boolean {
+  if (!isObject(value)) return false;
+  const prototype: unknown = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }

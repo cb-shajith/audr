@@ -16,7 +16,8 @@ export interface FileSinkOptions {
  * The file is opened on the first delivery and closed by `close()`, once every delivery
  * requested before it has been written. Batches are written one at a time, each with a
  * single call, even when `deliver()` is called concurrently; a failed write reports the
- * batch `retryable_failure`. Consumers of the file should de-duplicate on
+ * batch `retryable_failure`, and a batch holding a record `encodeRecord()` refuses reports
+ * `permanent_failure` without writing any of it. Consumers of the file should de-duplicate on
  * `record_id`, which makes replays from `onFailure` safe.
  */
 export class FileSink implements Sink {
@@ -45,7 +46,12 @@ export class FileSink implements Sink {
   }
 
   async #write(batch: readonly AudrRecord[]): Promise<BatchResult> {
-    const lines = batch.map((record) => `${encodeRecord(record)}\n`).join('');
+    let lines: string;
+    try {
+      lines = batch.map((record) => `${encodeRecord(record)}\n`).join('');
+    } catch (error) {
+      return BatchResult.failed({ retryable: false, detail: errorName(error) });
+    }
     try {
       this.#file ??= await open(this.#path, this.#flags);
       await this.#file.appendFile(lines, 'utf8');

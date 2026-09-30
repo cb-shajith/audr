@@ -33,6 +33,16 @@ describe('Client construction', () => {
     expect(() => new Client(new MemorySink(), options)).toThrow(field);
   });
 
+  it.each([
+    [{ ...EMITTER, component: 'nope' }, 'INVALID_ENUM at /emitter/component'],
+    [{ ...EMITTER, name: '' }, 'INVALID_STRING at /emitter/name'],
+    ['emitter', 'INVALID_TYPE at /emitter'],
+  ])('rejects the invalid emitter %o', (emitter, summary) => {
+    const construct = () => new Client(new MemorySink(), { emitter: emitter as never });
+    expect(construct).toThrow(ConfigurationError);
+    expect(construct).toThrow(`emitter is invalid: ${summary}`);
+  });
+
   it('rejects a sink without deliver() and close()', () => {
     expect(() => new Client({} as Sink)).toThrow('sink must implement deliver() and close()');
     expect(() => new Client(null as unknown as Sink)).toThrow(ConfigurationError);
@@ -81,13 +91,35 @@ describe('Client.record', () => {
     expect(logger.lines).toEqual(['audr: record rejected, 1 validation issue(s)']);
   });
 
-  it('does not call onFailure for a value that is not structurally a record', () => {
-    const onFailure = vi.fn();
-    const audr = client(new MemorySink(), { onFailure });
-    expect(audr.record({ nope: true } as never).outcome).toBe('rejected_invalid');
-    expect(audr.record(null as never).outcome).toBe('rejected_invalid');
-    expect(onFailure).not.toHaveBeenCalled();
+  it('reports every invalid object to onFailure, however malformed', () => {
+    const failures: FailedRecord[] = [];
+    const audr = client(new MemorySink(), { onFailure: (failure) => failures.push(failure) });
+    const { emitter: _omitted, ...bare } = makeRecord();
+    const results = [
+      audr.record(bare),
+      audr.record({ ...makeRecord(), record_id: 'nope' }),
+      audr.record({ nope: true } as never),
+    ];
+    expect(results.map(({ outcome }) => outcome)).toEqual(Array(3).fill('rejected_invalid'));
+    expect(results[0]?.issues.map(({ code, path }) => `${code} ${path}`)).toEqual([
+      'REQUIRED /emitter',
+    ]);
+    expect(failures.map(({ reason }) => reason)).toEqual(['invalid', 'invalid', 'invalid']);
   });
+
+  it.each([['abc'], [null], [42]])(
+    'reports %o as INVALID_TYPE at / without stamping its emitter',
+    (value) => {
+      const onFailure = vi.fn();
+      const audr = client(new MemorySink(), { emitter: EMITTER, onFailure });
+      const result = audr.record(value as never);
+      expect(result.outcome).toBe('rejected_invalid');
+      expect(result.issues.map(({ code, path }) => ({ code, path }))).toEqual([
+        { code: 'INVALID_TYPE', path: '/' },
+      ]);
+      expect(onFailure).not.toHaveBeenCalled();
+    },
+  );
 
   it('checks event_time against the configured clock', () => {
     const audr = client(new MemorySink(), { clock: () => new Date('2020-01-01T00:00:00Z') });
@@ -125,6 +157,18 @@ describe('Client.record', () => {
     (record.usage as { llm: { input_tokens: number } }).llm.input_tokens = -5;
     await audr.flush();
     expect(sink.records).toEqual([original]);
+  });
+
+  it('delivers and reports the record without properties set to undefined', async () => {
+    const sink = new MemorySink();
+    const failures: FailedRecord[] = [];
+    const audr = client(sink, { onFailure: (failure) => failures.push(failure) });
+    audr.record({ ...makeRecord(), corrects: undefined });
+    audr.record({ ...makeRecord({ attribution: {} }), corrects: undefined });
+    await audr.flush();
+    expect(sink.records).toHaveLength(1);
+    expect('corrects' in sink.records[0]!).toBe(false);
+    expect('corrects' in failures[0]!.record).toBe(false);
   });
 
   it('rejects a value that is not plain data without throwing', () => {

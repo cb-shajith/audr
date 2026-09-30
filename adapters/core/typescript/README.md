@@ -9,8 +9,8 @@
 Vendor-neutral TypeScript SDK for emitting [AUDR](https://openaudr.dev/spec/v1.0.0/) (Agent
 Usage Detail Record) v1.0.0 records: build records, validate them against the published
 schema, and deliver them to any `Sink` (a file, a queue, a metering backend) through a
-bounded, batching async pipeline. Two small runtime dependencies (`zod` and `uuid`); ESM
-with full type declarations.
+bounded, batching async pipeline. One small runtime dependency (`uuid`); ESM with full type
+declarations.
 
 ## Install
 
@@ -61,7 +61,8 @@ is delivered. Records are delivered in batches of up to `batchMaxSize` (default 
 when a batch fills, after `lingerMs` (default 5000), or on `flush()` and `shutdown()`.
 
 `FileSink` writes one JSON line per record, with one write per batch. When a write fails,
-the batch is reported retryable, and any lines already written remain in the file.
+the batch is reported retryable, and any lines already written remain in the file. A batch
+holding a record `encodeRecord()` refuses is reported as a permanent failure and not written.
 Replays from `onFailure` are therefore idempotent when the consumer de-duplicates on
 `record_id`.
 
@@ -108,7 +109,8 @@ try {
 
 A `ValidationIssue` carries a stable `code` and a JSON-pointer `path`, never a field value.
 `encodeRecord()` produces canonical JSON (keys sorted) for a record, and throws
-`ValidationError` for a number JSON cannot represent (`NaN` or `±Infinity`).
+`ValidationError` for a number JSON cannot represent (`NaN` or `±Infinity`) and for an
+array or non-plain object such as a `Date`, which no AUDR record holds.
 
 ## Writing a sink
 
