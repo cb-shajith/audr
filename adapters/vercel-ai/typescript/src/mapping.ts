@@ -112,8 +112,8 @@ export function modelSpanId(callId: string, index: number): string {
   return `model:${callId}:${String(index)}`;
 }
 
-export function toolSpanId(callId: string, toolCallId: string): string {
-  return `tool:${callId}:${toolCallId}`;
+export function toolSpanId(callId: string, index: number, toolCallId: string): string {
+  return `tool:${callId}:${String(index)}:${toolCallId}`;
 }
 
 export function embedSpanId(embedCallId: string): string {

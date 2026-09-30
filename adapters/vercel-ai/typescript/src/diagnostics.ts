@@ -38,9 +38,23 @@ export function formatDiagnostic(code: DiagnosticCode, fields: DiagnosticFields)
   return parts.length === 0 ? `${PREFIX}: ${code}` : `${PREFIX}: ${code} (${parts.join(', ')})`;
 }
 
-/** An error's class name, never its message: a message may carry prompt or record values. */
+/**
+ * An error's allowlisted built-in class name, never its mutable `name` or message: either
+ * may carry prompt or record values. Never throws because it runs while handling an error.
+ */
 export function errorName(error: unknown): string {
-  return error instanceof Error ? error.name : typeof error;
+  try {
+    if (error instanceof AggregateError) return 'AggregateError';
+    if (error instanceof EvalError) return 'EvalError';
+    if (error instanceof RangeError) return 'RangeError';
+    if (error instanceof ReferenceError) return 'ReferenceError';
+    if (error instanceof SyntaxError) return 'SyntaxError';
+    if (error instanceof TypeError) return 'TypeError';
+    if (error instanceof URIError) return 'URIError';
+    return error instanceof Error ? 'Error' : typeof error;
+  } catch {
+    return 'unknown';
+  }
 }
 
 /** `<code>@<path>` for every issue, comma-separated; `undefined` when there are none. */

@@ -31,18 +31,42 @@ describe('VAI-12 diagnostics carry no values', () => {
   });
 
   it.each([
+    [new AggregateError([], 'secret'), 'AggregateError'],
+    [new EvalError('secret'), 'EvalError'],
+    [new RangeError('secret'), 'RangeError'],
+    [new ReferenceError('secret'), 'ReferenceError'],
+    [new SyntaxError('secret'), 'SyntaxError'],
     [new TypeError('secret'), 'TypeError'],
+    [new URIError('secret'), 'URIError'],
     [
       new (class CustomError extends Error {
-        override name = 'CustomError';
+        override name = 'secret-account-id';
       })('secret'),
-      'CustomError',
+      'Error',
     ],
     ['secret', 'string'],
     [undefined, 'undefined'],
     [{ message: 'secret' }, 'object'],
   ])('VAI-12 errorName(%s) is %s', (error, name) => {
     expect(errorName(error)).toBe(name);
+  });
+
+  it('VAI-12 errorName never reads a mutable Error.name', () => {
+    const error = Object.defineProperty(new Error('secret'), 'name', {
+      get(): never {
+        throw new TypeError('secret');
+      },
+    });
+    expect(errorName(error)).toBe('Error');
+  });
+
+  it('VAI-12 errorName cannot throw while inspecting a hostile value', () => {
+    const error = new Proxy(new Error('secret'), {
+      getPrototypeOf(): never {
+        throw new TypeError('secret');
+      },
+    });
+    expect(errorName(error)).toBe('unknown');
   });
 
   it('VAI-12 formats issues as code@path', () => {

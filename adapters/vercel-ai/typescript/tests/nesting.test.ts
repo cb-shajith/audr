@@ -52,7 +52,7 @@ describe('VAI-10 spawned agents join the parent run', () => {
     const runs = byRun(records);
     expect(runs.size).toBe(1);
     const [runId] = runs.keys();
-    const toolSpan = `tool:${runId!}:outer-tc`;
+    const toolSpan = `tool:${runId!}:0:outer-tc`;
 
     const outer = records.filter((r) => r.run.parent_span_id === undefined);
     const inner = records.filter((r) => r.run.parent_span_id !== undefined);
@@ -119,8 +119,8 @@ describe('VAI-10 spawned agents join the parent run', () => {
     const children = records.filter((r) => r.run.parent_span_id !== undefined);
     expect(children).toHaveLength(2);
     expect(children.map((r) => r.run.parent_span_id).sort()).toEqual([
-      `tool:${runId}:a`,
-      `tool:${runId}:b`,
+      `tool:${runId}:0:a`,
+      `tool:${runId}:1:b`,
     ]);
     expect(records.every((r) => r.run.run_id === runId)).toBe(true);
   });

@@ -26,7 +26,7 @@ interface CallInfo {
 export interface TrackedCall extends CallInfo {
   modelCalls: number;
   rerankCalls: number;
-  readonly usedToolSpanIds: Set<string>;
+  toolCalls: number;
   /** Span id of each running tool, by `toolCallId`. */
   readonly openToolSpans: Map<string, string>;
   /** `performance.now()` at each embed call's start, by `embedCallId`. */
@@ -182,7 +182,7 @@ export class CallTracker {
       ...info,
       modelCalls: 0,
       rerankCalls: 0,
-      usedToolSpanIds: new Set(),
+      toolCalls: 0,
       openToolSpans: new Map(),
       embedStartTimes: new Map(),
       rerankStartedAt: undefined,
@@ -196,20 +196,9 @@ export class CallTracker {
   }
 }
 
-/**
- * Open a tool span and return its id: `tool:<callId>:<toolCallId>`, with `:<n>` appended
- * when that id is already used in this call, as happens when a provider reuses tool call
- * ids across steps.
- */
+/** Open a tool span with a run-local invocation index, without retaining completed ids. */
 export function openToolSpan(call: TrackedCall, toolCallId: string): string {
-  const base = toolSpanId(call.callId, toolCallId);
-  let spanId = base;
-  let suffix = 0;
-  while (call.usedToolSpanIds.has(spanId)) {
-    suffix += 1;
-    spanId = `${base}:${String(suffix)}`;
-  }
-  call.usedToolSpanIds.add(spanId);
+  const spanId = toolSpanId(call.callId, call.toolCalls++, toolCallId);
   call.openToolSpans.set(toolCallId, spanId);
   return spanId;
 }

@@ -22,14 +22,17 @@ const STRING_FIELDS = ['environment', 'user_id', 'account_id', 'subscription_id'
  * object of strings. Everything else is dropped; the client validates what remains.
  */
 export function readRuntimeAttribution(source: AttributionSource): Attribution | undefined {
-  const audr = source.runtimeContext.audr;
+  const audr = Object.hasOwn(source.runtimeContext, 'audr')
+    ? source.runtimeContext.audr
+    : undefined;
   if (!isPlainObject(audr)) return undefined;
   const picked: Record<string, unknown> = {};
   for (const key of STRING_FIELDS) {
+    if (!Object.hasOwn(audr, key)) continue;
     const value = audr[key];
     if (typeof value === 'string') picked[key] = value;
   }
-  const labels = audr.labels;
+  const labels = Object.hasOwn(audr, 'labels') ? audr.labels : undefined;
   if (isPlainObject(labels) && Object.values(labels).every((v) => typeof v === 'string')) {
     picked.labels = { ...labels };
   }

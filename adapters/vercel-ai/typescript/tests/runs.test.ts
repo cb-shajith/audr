@@ -101,7 +101,7 @@ describe('VAI-10 call state', () => {
       steps: { next: 0 },
       modelCalls: 0,
       rerankCalls: 0,
-      usedToolSpanIds: new Set(),
+      toolCalls: 0,
       openToolSpans: new Map(),
       embedStartTimes: new Map(),
       rerankStartedAt: undefined,
@@ -125,7 +125,7 @@ describe('VAI-10 call state', () => {
       modelCalls: 0,
     });
     expect(child.steps).toBe(parent.steps);
-    expect(child.usedToolSpanIds).not.toBe(parent.usedToolSpanIds);
+    expect(child.toolCalls).toBe(0);
     expect(child.embedStartTimes).not.toBe(parent.embedStartTimes);
   });
 
@@ -188,23 +188,35 @@ describe('VAI-09 tool spans', () => {
     const tracker = new CallTracker(4);
     tracker.startRoot({ callId: 'call-1', ...root });
     const call = tracker.get('call-1')!;
-    expect(openToolSpan(call, 'tc')).toBe('tool:call-1:tc');
-    expect(closeToolSpan(call, 'tc')).toBe('tool:call-1:tc');
-    expect(openToolSpan(call, 'tc')).toBe('tool:call-1:tc:1');
-    expect(closeToolSpan(call, 'tc')).toBe('tool:call-1:tc:1');
+    expect(openToolSpan(call, 'tc')).toBe('tool:call-1:0:tc');
+    expect(closeToolSpan(call, 'tc')).toBe('tool:call-1:0:tc');
+    expect(openToolSpan(call, 'tc')).toBe('tool:call-1:1:tc');
+    expect(closeToolSpan(call, 'tc')).toBe('tool:call-1:1:tc');
     expect(call.openToolSpans.size).toBe(0);
   });
 
-  it('VAI-09 a suffix never collides with a literal tool call id', () => {
+  it('VAI-09 an invocation index never collides with a literal tool call id', () => {
     const tracker = new CallTracker(4);
     tracker.startRoot({ callId: 'call-1', ...root });
     const call = tracker.get('call-1')!;
     const spans = ['tc:1', 'tc', 'tc', 'tc'].map((id) => closeToolSpan(call, id));
     expect(spans).toEqual([
-      'tool:call-1:tc:1',
-      'tool:call-1:tc',
-      'tool:call-1:tc:2',
-      'tool:call-1:tc:3',
+      'tool:call-1:0:tc:1',
+      'tool:call-1:1:tc',
+      'tool:call-1:2:tc',
+      'tool:call-1:3:tc',
     ]);
+  });
+
+  it('VAI-11 completed tool spans retain no per-invocation history', () => {
+    const tracker = new CallTracker(4);
+    tracker.startRoot({ callId: 'call-1', ...root });
+    const call = tracker.get('call-1')!;
+    for (let index = 0; index < 1_000; index += 1) {
+      closeToolSpan(call, `tc-${String(index)}`);
+    }
+    expect(call.toolCalls).toBe(1_000);
+    expect(call.openToolSpans.size).toBe(0);
+    expect(call).not.toHaveProperty('usedToolSpanIds');
   });
 });

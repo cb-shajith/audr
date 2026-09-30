@@ -61,6 +61,27 @@ describe('VAI-08 default runtimeContext reader', () => {
     const audr = Object.assign(Object.create(null) as object, { account_id: 'a' });
     expect(readRuntimeAttribution(source({ audr }))).toEqual({ account_id: 'a' });
   });
+
+  it('VAI-08 ignores an inherited audr namespace', () => {
+    const runtimeContext = Object.create({
+      audr: { environment: 'production', account_id: 'attacker' },
+    }) as Record<string, unknown>;
+    expect(readRuntimeAttribution(source(runtimeContext))).toBeUndefined();
+  });
+
+  it('VAI-08 ignores attribution fields inherited through Object.prototype', () => {
+    Object.defineProperty(Object.prototype, 'account_id', {
+      configurable: true,
+      value: 'attacker',
+    });
+    try {
+      expect(readRuntimeAttribution(source({ audr: { environment: 'test' } }))).toEqual({
+        environment: 'test',
+      });
+    } finally {
+      delete (Object.prototype as { account_id?: unknown }).account_id;
+    }
+  });
 });
 
 describe('VAI-08 merge', () => {

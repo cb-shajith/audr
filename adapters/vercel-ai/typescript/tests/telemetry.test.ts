@@ -235,7 +235,7 @@ describe('VAI-06 tool execution record', () => {
         operation: 'tool_execution',
       },
       usage: { tool: { type: 'invocation', call_count: 1 } },
-      run: { span_id: 'tool:call-00000001:tc-2', step: 1 },
+      run: { span_id: 'tool:call-00000001:1:tc-2', step: 1 },
     });
     expect(records[1]!.resource).not.toHaveProperty('modality');
   });

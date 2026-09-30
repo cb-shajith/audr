@@ -173,9 +173,9 @@ instance meters starts its own run with that instance's attribution. See
   tool that throws produces a record with `run.error_code` `VERCEL_AI_TOOL_ERROR`
   (exported as `TOOL_ERROR_CODE`); the error itself is never read.
 - **Identifiers.** `run.run_id` is the AI SDK `callId` of the root call. `run.span_id` is
-  `model:<callId>:<n>`, `tool:<callId>:<toolCallId>`, `embed:<embedCallId>` or
-  `rerank:<callId>:<n>`. When a provider reuses a tool call id within one call, the later
-  executions get `tool:<callId>:<toolCallId>:<n>`, so no two operations share a span.
+  `model:<callId>:<n>`, `tool:<callId>:<n>:<toolCallId>`, `embed:<embedCallId>` or
+  `rerank:<callId>:<n>`. The tool invocation ordinal keeps spans unique even when a
+  provider reuses a tool call id, without retaining every completed id.
   `run.step` is a run-wide ordinal in emission order; a record the `Client` does not queue
   still takes its step, so a gap in the sequence marks a record that was not delivered.
   `run.run_type` is `agent_run` for `generateText` and `streamText`, `single_call` for

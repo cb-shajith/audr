@@ -189,7 +189,7 @@ describe('VAI-15 provider slug', () => {
 describe('VAI-09 identifiers', () => {
   it('VAI-09 span ids carry the operation kind and its own call id', () => {
     expect(modelSpanId('call-a', 2)).toBe('model:call-a:2');
-    expect(toolSpanId('call-a', 'tc-1')).toBe('tool:call-a:tc-1');
+    expect(toolSpanId('call-a', 3, 'tc-1')).toBe('tool:call-a:3:tc-1');
     expect(embedSpanId('call-e')).toBe('embed:call-e');
     expect(rerankSpanId('call-a', 0)).toBe('rerank:call-a:0');
   });

@@ -81,7 +81,7 @@ describe('VAI-04 generation records', () => {
     expect(records.every((r) => r.run.run_id === runId)).toBe(true);
     expect(records.map((r) => r.run.span_id)).toEqual([
       `model:${runId}:0`,
-      `tool:${runId}:tc-1`,
+      `tool:${runId}:0:tc-1`,
       `model:${runId}:1`,
     ]);
     expect(records.map((r) => r.run.step)).toEqual([0, 1, 2]);
@@ -395,7 +395,7 @@ describe('VAI-09 tool spans stay unique', () => {
     const runId = records[0]!.run.run_id;
     expect(
       records.filter((r) => r.resource.operation === 'tool_execution').map((r) => r.run.span_id),
-    ).toEqual([`tool:${runId}:call_0`, `tool:${runId}:call_0:1`]);
+    ).toEqual([`tool:${runId}:0:call_0`, `tool:${runId}:1:call_0`]);
     expect(new Set(records.map((r) => r.run.span_id)).size).toBe(records.length);
   });
 });
