@@ -3,19 +3,21 @@
  *
  * Chargebee's ingest API accepts only scalar property values, so nested AUDR objects are
  * flattened here, in the sink, rather than in the record model. Nested objects become
- * `parent_child` keys; arrays and the caller-keyed `labels` map are stored as canonical
+ * `parent__child` keys; arrays and the caller-keyed `labels` map are stored as canonical
  * JSON under a terminal `json` key, so the destination only ever sees scalars.
  */
-import { type AudrRecord } from 'audr';
+import { type AudrRecord } from '@openaudr/audr';
 
 import { InvalidUsageEventError, type PropertyValue } from './event.js';
 
+// Two underscores keep a nested path apart from AUDR field names like `input_tokens`.
+export const DEFAULT_SEPARATOR = '__';
 const JSON_SUFFIX = 'json';
 // Label keys are chosen by the caller; flattening them would mint unbounded property names.
 const JSON_CONTAINER_KEYS = new Set(['labels']);
 
 export interface FlattenOptions {
-  /** Joins path segments. Chargebee needs one or more underscores. Default `_`. */
+  /** Joins path segments. Chargebee needs one or more underscores. Default `__`. */
   readonly separator?: string | undefined;
 }
 
@@ -30,7 +32,7 @@ export function flattenRecord(
 /** Flatten a nested JSON object into Chargebee scalar properties. */
 export function flatten(
   nested: unknown,
-  { separator = '_' }: FlattenOptions = {},
+  { separator = DEFAULT_SEPARATOR }: FlattenOptions = {},
 ): Record<string, PropertyValue> {
   if (!isPlainObject(nested)) {
     throw new InvalidUsageEventError('record must encode to a JSON object');

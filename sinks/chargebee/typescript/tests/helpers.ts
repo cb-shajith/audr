@@ -1,5 +1,5 @@
-import { type Attribution, type AudrRecord, type RecordInput } from 'audr';
-import { makeRecord } from 'audr/testing';
+import { type Attribution, type AudrRecord, type RecordInput } from '@openaudr/audr';
+import { makeRecord } from '@openaudr/audr/testing';
 
 import { ChargebeeSink, type ChargebeeSinkOptions } from '../src/index.js';
 

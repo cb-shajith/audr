@@ -1,5 +1,5 @@
 {
-  "name": "audr-sink-chargebee",
+  "name": "@openaudr/audr-sink-chargebee",
   "version": "0.1.0",
   "description": "Chargebee sink for AUDR: deliver usage records to Chargebee Usage-Based Billing.",
   "license": "Apache-2.0",
@@ -50,14 +50,14 @@
     "prepack": "npm run build"
   },
   "peerDependencies": {
-    "audr": "^0.1.0"
+    "@openaudr/audr": "^0.1.0"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@eslint/js": "^10.0.1",
+    "@openaudr/audr": "file:../../../adapters/core/typescript",
     "@types/node": "^22.19.0",
     "@vitest/coverage-v8": "^5.0.0",
-    "audr": "file:../../../adapters/core/typescript",
     "eslint": "^10.10.0",
     "prettier": "^3.9.6",
     "publint": "^0.3.24",

@@ -6,11 +6,11 @@ import {
   type Logger,
   type RejectedRecord,
   type Sink,
-} from 'audr';
+} from '@openaudr/audr';
 
 import { BATCH_PATH, type CredentialOptions, resolveCredentials } from './credentials.js';
 import { InvalidUsageEventError, type UsageEvent, validateEvent } from './event.js';
-import { flattenRecord } from './flatten.js';
+import { DEFAULT_SEPARATOR, flattenRecord } from './flatten.js';
 import { RetryPolicy, type RetryOptions } from './retry.js';
 import { ClosedError, Transport, type TransportOptions } from './transport.js';
 import { VERSION } from './version.js';
@@ -23,7 +23,7 @@ const ERROR_CODE_FIELDS = ['api_error_code', 'error_code', 'code'] as const;
 
 export interface ChargebeeSinkOptions extends CredentialOptions, TransportOptions {
   readonly retry?: RetryOptions | undefined;
-  /** Joins flattened property names: one or more underscores. Default `_`. */
+  /** Joins flattened property names: one or more underscores. Default `__`. */
   readonly separator?: string | undefined;
   /** Receives value-free diagnostics. Default `console`. */
   readonly logger?: Logger | undefined;
@@ -47,7 +47,7 @@ export class ChargebeeSink implements Sink {
   readonly #logger: Logger;
 
   constructor(options: ChargebeeSinkOptions = {}) {
-    const separator = options.separator ?? '_';
+    const separator = options.separator ?? DEFAULT_SEPARATOR;
     if (!SEPARATOR.test(separator)) {
       throw new ConfigurationError(
         'separator must consist of one or more underscores; Chargebee property names must ' +

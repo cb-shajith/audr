@@ -1,5 +1,5 @@
 /** Failure classification and the bounded, full-jitter retry policy applied in `deliver()`. */
-import { ConfigurationError } from 'audr';
+import { ConfigurationError } from '@openaudr/audr';
 
 /** The largest delay `setTimeout` honours; anything longer fires immediately. */
 export const MAX_DELAY_MS = 2_147_483_647;

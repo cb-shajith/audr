@@ -8,8 +8,9 @@ changes to the package itself.
 
 ## What this is
 
-`sinks/chargebee/typescript` is the `audr-sink-chargebee` npm package: an HTTP sink that
-delivers record batches from the [`audr`](../../../adapters/core/typescript/) core SDK to a
+`sinks/chargebee/typescript` is the `@openaudr/audr-sink-chargebee` npm package: an HTTP
+sink that delivers record batches from the
+[`@openaudr/audr`](../../../adapters/core/typescript/) core SDK to a
 Chargebee site's usage-ingest batch endpoint for Usage-Based Billing. It implements the
 sink contract defined in
 [`adapters/core/README.md`](../../../adapters/core/README.md#the-sink-contract) and
@@ -40,7 +41,7 @@ matches the behaviour of the Python sink in [`../python/`](../python/).
    is `usage_timestamp`. A replay keyed on `record_id` is idempotent.
 4. Flatten and forward every field of the record, including `attribution.labels` and
    `x_*` extensions. Keep property names reversible; the separator is one or more
-   underscores.
+   underscores, `__` by default.
 5. A change to the status-to-outcome mapping in `src/sink.ts` must be reflected in the
    README table in the same change. When a `207` failure cannot be matched to a record,
    mark every non-rejected record in the batch `unknown`. Retries are bounded by `retry`.
@@ -55,7 +56,7 @@ The shared toolchain is defined in the top-level
 [`CONTRIBUTING.md`](../../../CONTRIBUTING.md#shared-typescript-toolchain). Specific to this
 package:
 
-- **Dependencies:** `audr` is a peer dependency. Until it is published, the dev copy is
+- **Dependencies:** `@openaudr/audr` is a peer dependency. Until it is published, the dev copy is
   linked from `../../../adapters/core/typescript`, and `make install` builds the core
   first.
 - **Version:** `package.json` and `src/version.ts`; `tests/public-api.test.ts` keeps them
@@ -66,6 +67,6 @@ package:
 ```bash
 make format        # prettier --write
 make typecheck     # tsc --noEmit over src, tests and scripts
-make isolation     # build, lint the package metadata, install beside audr and deliver a batch
+make isolation     # build, lint the package metadata, install beside @openaudr/audr and deliver a batch
 make verify        # lint + test + isolation
 ```

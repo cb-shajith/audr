@@ -2,7 +2,7 @@
 import { Buffer } from 'node:buffer';
 import process from 'node:process';
 
-import { ConfigurationError } from 'audr';
+import { ConfigurationError } from '@openaudr/audr';
 
 /** The Chargebee batch ingest domain; it is not site- or geography-specific. */
 export const DEFAULT_INGEST_DOMAIN = 'ingest.chargebee.com';

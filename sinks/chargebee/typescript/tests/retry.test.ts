@@ -1,4 +1,4 @@
-import { ConfigurationError } from 'audr';
+import { ConfigurationError } from '@openaudr/audr';
 import { describe, expect, it } from 'vitest';
 
 import { parseRetryAfterMs, RetryPolicy } from '../src/retry.js';

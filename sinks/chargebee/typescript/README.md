@@ -1,19 +1,20 @@
 # audr-sink-chargebee
 
-[![npm](https://img.shields.io/npm/v/audr-sink-chargebee?include_prereleases)](https://www.npmjs.com/package/audr-sink-chargebee)
-[![Node versions](https://img.shields.io/node/v/audr-sink-chargebee)](https://www.npmjs.com/package/audr-sink-chargebee)
+[![npm](https://img.shields.io/npm/v/@openaudr/audr-sink-chargebee?include_prereleases)](https://www.npmjs.com/package/@openaudr/audr-sink-chargebee)
+[![Node versions](https://img.shields.io/node/v/@openaudr/audr-sink-chargebee)](https://www.npmjs.com/package/@openaudr/audr-sink-chargebee)
 
 > **Status: alpha.** The record model tracks AUDR v1.0.0 and is stable; the TypeScript API
 > may change in minor releases before 1.0.
 
 The Chargebee sink for [AUDR](https://openaudr.dev). Delivers record batches from the
-[`audr`](https://www.npmjs.com/package/audr) core SDK to a site's usage-ingest batch
-endpoint. ESM with full type declarations; no runtime dependencies beyond `audr`.
+[`@openaudr/audr`](https://www.npmjs.com/package/@openaudr/audr) core SDK to a site's
+usage-ingest batch endpoint. ESM with full type declarations; no runtime dependencies
+beyond `@openaudr/audr`.
 
 ## Install
 
 ```bash
-npm install audr audr-sink-chargebee
+npm install @openaudr/audr @openaudr/audr-sink-chargebee
 ```
 
 Requires Node.js 22.12 or later.
@@ -21,8 +22,8 @@ Requires Node.js 22.12 or later.
 ## Quickstart
 
 ```ts
-import { Client, createRecord } from 'audr';
-import { ChargebeeSink } from 'audr-sink-chargebee';
+import { Client, createRecord } from '@openaudr/audr';
+import { ChargebeeSink } from '@openaudr/audr-sink-chargebee';
 
 // Record construction is documented in the core SDK README:
 // https://github.com/openaudr/audr/blob/main/adapters/core/typescript/README.md
@@ -78,11 +79,12 @@ The sink sends each batch to `https://{site}.{ingestDomain}/api/v2/batch/usage_e
 - `record_id` is used as Chargebee's `deduplication_id` and `timing.event_time` (as
   milliseconds) becomes `usage_timestamp`.
 - AUDR records are nested; Chargebee's ingest API accepts scalar properties only, so the
-  sink flattens every field to reversible names such as `usage_llm_input_tokens`. Arrays
-  and `attribution.labels` are sent as canonical JSON under a `_json` suffix, for example
-  `attribution_labels_json`. The default separator is `_`; it is configurable with
-  `separator` and must be one or more underscores, since Chargebee property names may
-  only contain letters, digits, and underscores.
+  sink flattens every field to reversible names such as `usage__llm__input_tokens`.
+  Arrays and `attribution.labels` are sent as canonical JSON under a `__json` suffix, for
+  example `attribution__labels__json`. The default separator is `__`, which keeps path
+  boundaries distinct from the underscores inside AUDR field names; it is configurable
+  with `separator` and must be one or more underscores, since Chargebee property names
+  may only contain letters, digits, and underscores.
 - A batch is sent as one request. If Chargebee refuses it as too large it answers `413`
   and `deliver()` fails the whole batch with detail `payload_too_large`, dropping every
   record in it; send fewer records per request with `new Client(sink, { batchMaxSize })`.
@@ -122,14 +124,14 @@ Delivery behaviour is tuned on the constructor, alongside the `site` and `apiKey
 described above:
 
 ```ts
-import { ChargebeeSink } from 'audr-sink-chargebee';
+import { ChargebeeSink } from '@openaudr/audr-sink-chargebee';
 
 const sink = new ChargebeeSink({
   site: 'acme',
   apiKey: process.env.CHARGEBEE_API_KEY,
   retry: { maxAttempts: 3, initialBackoffMs: 500, maxBackoffMs: 30_000, multiplier: 2 },
   timeoutMs: 10_000, // deadline for each HTTP request
-  separator: '_',
+  separator: '__',
 });
 ```
 

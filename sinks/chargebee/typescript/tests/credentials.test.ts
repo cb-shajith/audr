@@ -1,6 +1,6 @@
 import { inspect } from 'node:util';
 
-import { ConfigurationError } from 'audr';
+import { ConfigurationError } from '@openaudr/audr';
 import { describe, expect, it, vi } from 'vitest';
 
 import { parseIngestUrl, resolveCredentials } from '../src/credentials.js';

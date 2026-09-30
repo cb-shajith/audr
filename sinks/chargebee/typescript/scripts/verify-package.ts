@@ -11,23 +11,30 @@ import { join } from 'node:path';
 
 const root = join(import.meta.dirname, '..');
 const core = join(root, '../../../adapters/core/typescript');
-const dependencies = (dir: string): string[] => {
-  const { dependencies = {} } = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8')) as {
+const manifest = (dir: string): { name: string; dependencies: string[] } => {
+  const { name, dependencies = {} } = JSON.parse(
+    readFileSync(join(dir, 'package.json'), 'utf8'),
+  ) as {
+    name: string;
     dependencies?: Record<string, string>;
   };
-  return Object.keys(dependencies);
+  return { name, dependencies: Object.keys(dependencies) };
 };
+const coreManifest = manifest(core);
+const rootManifest = manifest(root);
+const coreName = coreManifest.name;
+const name = rootManifest.name;
 const expected = [
-  ...new Set(['audr', 'audr-sink-chargebee', ...dependencies(core), ...dependencies(root)]),
+  ...new Set([coreName, name, ...coreManifest.dependencies, ...rootManifest.dependencies]),
 ].sort();
 const project = mkdtempSync(join(tmpdir(), 'audr-sink-chargebee-verify-'));
 const run = (command: string, args: string[], cwd = project): string =>
   execFileSync(command, args, { cwd, encoding: 'utf8' });
 
 const ESM_SMOKE = `
-import { Client } from 'audr';
-import { makeRecord } from 'audr/testing';
-import { ChargebeeSink } from 'audr-sink-chargebee';
+import { Client } from '${coreName}';
+import { makeRecord } from '${coreName}/testing';
+import { ChargebeeSink } from '${name}';
 
 const requests = [];
 const fetch = async (url, init) => {
@@ -49,7 +56,7 @@ if (request.events[0].deduplication_id !== record.record_id || client.stats.sent
 `;
 
 const CJS_SMOKE = `
-const { ChargebeeSink, VERSION } = require('audr-sink-chargebee');
+const { ChargebeeSink, VERSION } = require('${name}');
 if (typeof ChargebeeSink !== 'function' || typeof VERSION !== 'string') throw new Error('smoke failed');
 `;
 
@@ -61,8 +68,15 @@ try {
   writeFileSync(join(project, 'package.json'), '{ "private": true, "type": "module" }\n');
   run('npm', ['install', '--silent', '--no-audit', '--no-fund', ...tarballs]);
 
-  const installed = readdirSync(join(project, 'node_modules'))
-    .filter((name) => !name.startsWith('.'))
+  // A scoped package installs as node_modules/@scope/name.
+  const modules = join(project, 'node_modules');
+  const installed = readdirSync(modules)
+    .filter((entry) => !entry.startsWith('.'))
+    .flatMap((entry) =>
+      entry.startsWith('@')
+        ? readdirSync(join(modules, entry)).map((child) => `${entry}/${child}`)
+        : [entry],
+    )
     .sort();
   if (installed.join() !== expected.join()) {
     throw new Error(`expected ${expected.join(', ')}, found: ${installed.join(', ')}`);

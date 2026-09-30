@@ -1,4 +1,4 @@
-import { ConfigurationError } from 'audr';
+import { ConfigurationError } from '@openaudr/audr';
 import { describe, expect, it } from 'vitest';
 
 import { flattenRecord, VERSION } from '../src/index.js';
@@ -45,6 +45,17 @@ describe('ChargebeeSink requests', () => {
       expect(calls[0]?.body.events[0]?.properties).toEqual(flattenRecord(sent, { separator }));
     },
   );
+
+  it('flattens with a double underscore by default', async () => {
+    const { fetch, calls } = fakeFetch(() => respond(202));
+    const sent = record({ labels: { team: 'billing' } });
+
+    await makeSink({ fetch }).deliver([sent]);
+
+    const properties = calls[0]?.body.events[0]?.properties;
+    expect(properties).toEqual(flattenRecord(sent, { separator: '__' }));
+    expect(properties).toHaveProperty('usage__llm__input_tokens');
+  });
 
   it.each(['-', '', '_a', 'a_', ' '])('rejects the separator %j', (separator) => {
     expect(() => makeSink({ separator })).toThrow(ConfigurationError);

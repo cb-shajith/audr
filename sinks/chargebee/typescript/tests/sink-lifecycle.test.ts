@@ -1,4 +1,4 @@
-import { assertSinkContract } from 'audr/testing';
+import { assertSinkContract } from '@openaudr/audr/testing';
 import { describe, expect, it } from 'vitest';
 
 import { ChargebeeSink } from '../src/index.js';

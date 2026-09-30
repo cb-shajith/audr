@@ -117,7 +117,7 @@ asyncio.run(main())
 | --- | --- | --- |
 | Core SDK | [`audr`](adapters/core/python/README.md) (Python), [`@openaudr/audr`](adapters/core/typescript/README.md) (TypeScript) | [`adapters/core/README.md`](adapters/core/README.md) — the `Client`, the sink contract, delivery states |
 | Adapters | [`audr-adapter-litellm`](adapters/litellm/python/README.md), [`audr-adapter-nemo-relay`](adapters/nemo-relay/python/README.md) | [`adapters/README.md`](adapters/README.md) |
-| Sinks | [`audr-sink-chargebee`](sinks/chargebee/python/README.md) (Python), [`audr-sink-chargebee`](sinks/chargebee/typescript/README.md) (TypeScript) | [`sinks/README.md`](sinks/README.md) |
+| Sinks | [`audr-sink-chargebee`](sinks/chargebee/python/README.md) (Python), [`@openaudr/audr-sink-chargebee`](sinks/chargebee/typescript/README.md) (TypeScript) | [`sinks/README.md`](sinks/README.md) |
 
 ## Status
 

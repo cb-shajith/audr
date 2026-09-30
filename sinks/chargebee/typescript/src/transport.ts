@@ -1,5 +1,5 @@
 /** A terminally closeable `fetch` wrapper with a request deadline. */
-import { ConfigurationError } from 'audr';
+import { ConfigurationError } from '@openaudr/audr';
 
 import { MAX_DELAY_MS } from './retry.js';
 
