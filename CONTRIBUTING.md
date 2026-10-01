@@ -53,6 +53,7 @@ make all         # check + python + typescript: everything CI runs
 | `make adapter-nemo-relay-python` | `make lint test` in `adapters/nemo-relay/python` |
 | `make sink-chargebee-python` | `make lint test` in `sinks/chargebee/python` |
 | `make core-typescript` | `make install verify` in `adapters/core/typescript` |
+| `make sink-chargebee-typescript` | `make install verify` in `sinks/chargebee/typescript` |
 
 ## Where a change belongs
 
@@ -113,7 +114,8 @@ A package is named `audr-<kind>-<target>` (for example `audr-sink-chargebee`,
 listings group every sink together and every adapter together. The import package is the
 distribution name with hyphens replaced by underscores. Its CI workflow is
 `.github/workflows/<kind>-<target>-<language>-verify.yml`. The core is the one exception:
-`audr`, not `audr-adapter-core`.
+`audr`, not `audr-adapter-core`. On npm every package is published under the `@openaudr`
+scope, for example `@openaudr/audr` and `@openaudr/audr-sink-chargebee`.
 
 ### Shared Python toolchain
 
