@@ -21,16 +21,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   tracing; `examples/tracing.ts` shows the per-run client this needs with
   `merge-gateway-sdk` 0.4.
 - Value-free diagnostics with stable codes: `ATTRIBUTION_UNRESOLVED`, `MODEL_UNREPORTED`,
-  `STREAM_INCOMPLETE`, `RECORD_NOT_QUEUED` and `HOOK_FAILED`.
-
-### Fixed
-
-- Omit `input_tokens` when a cache counter is explicitly `null` instead of treating it as
-  zero, and keep the whole completion as `output_tokens` when reasoning is `null`.
-- Set `resource.modality` from the response modalities requested from Gateway, including
-  image and multimodal generations.
-- Return a native result unchanged when its stream shape cannot be inspected safely.
-- Use the published `@openaudr/audr` package and required peer dependencies, matching the
-  shared TypeScript adapter packaging convention.
-- Keep diagnostics silent unless the host supplies a logger, and reject a client without
-  `record()` when instrumentation is configured.
+  `STREAM_INCOMPLETE`, `RECORD_NOT_QUEUED` and `HOOK_FAILED`. Nothing is logged unless a
+  `logger` is given. `merge-gateway-sdk` and `@openaudr/audr` are peer dependencies.
