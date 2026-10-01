@@ -86,57 +86,31 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('VAI-02 option validation', () => {
-  const { client } = harness();
-
-  it.each([0, 1.5, Number.NaN, -1])(
-    'VAI-02 rejects maxTrackedOperations %s without naming the value',
-    (maxTrackedOperations) => {
-      expect(() => audrTelemetry({ client, maxTrackedOperations })).toThrow(
-        new ConfigurationError('maxTrackedOperations must be an integer >= 1'),
-      );
-    },
-  );
-
+describe('option validation', () => {
   it.each([undefined, null, {}, { record: 'no' }])(
-    'VAI-02 rejects a client without record()',
+    'rejects a client without record()',
     (candidate) => {
       expect(() => audrTelemetry({ client: candidate as unknown as Client })).toThrow(
-        ConfigurationError,
+        new ConfigurationError('client must implement record()'),
       );
     },
   );
 
-  it.each([null, 'production', 1])('VAI-02 rejects attributionDefaults %s', (defaults) => {
-    expect(() => audrTelemetry({ client, attributionDefaults: defaults as never })).toThrow(
-      new ConfigurationError('attributionDefaults must be an object'),
-    );
-  });
-
-  it.each([null, 'openai', {}])('VAI-02 rejects a mapResource that is not a function', (fn) => {
-    expect(() => audrTelemetry({ client, mapResource: fn as never })).toThrow(
-      new ConfigurationError('mapResource must be a function'),
-    );
-  });
-
-  it('VAI-02 rejects missing options', () => {
-    expect(() => audrTelemetry(undefined as never)).toThrow(ConfigurationError);
-  });
-
-  it('VAI-02 accepts a structural client and the default logger', () => {
+  it('accepts a structural client and logs nothing by default', () => {
     const record = vi.fn(() => ({ outcome: 'queued' as const, queued: true, issues: [] }));
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const t = hooks(audrTelemetry({ client: { record } as unknown as Client }));
     t.onStart(start('call-00000001'));
-    expect(warn).toHaveBeenCalledWith(
-      '@openaudr/adapter-vercel-ai: ATTRIBUTION_UNRESOLVED (operation=ai.generateText)',
-    );
+    t.onStart(null as never);
+    expect(warn).not.toHaveBeenCalled();
+    expect(error).not.toHaveBeenCalled();
     expect(record).not.toHaveBeenCalled();
   });
 });
 
-describe('VAI-03 host owns the client', () => {
-  it('VAI-03 submits to the client and leaves it open', async () => {
+describe('host owns the client', () => {
+  it('submits to the client and leaves it open', async () => {
     const h = harness();
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001'));
@@ -149,8 +123,8 @@ describe('VAI-03 host owns the client', () => {
   });
 });
 
-describe('VAI-04 generation record', () => {
-  it('VAI-04 builds the exact generation record', async () => {
+describe('generation record', () => {
+  it('builds the exact generation record', async () => {
     const h = harness({ attributionDefaults: { environment: 'staging', account_id: 'a' } });
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001', { functionId: 'support' }));
@@ -184,7 +158,7 @@ describe('VAI-04 generation record', () => {
   });
 
   it.each([Number.NaN, -1, Number.POSITIVE_INFINITY])(
-    'VAI-04 omits duration_ms for responseTimeMs %s',
+    'omits duration_ms for responseTimeMs %s',
     async (responseTimeMs) => {
       const h = harness();
       const t = hooks(h.telemetry);
@@ -195,7 +169,7 @@ describe('VAI-04 generation record', () => {
     },
   );
 
-  it('VAI-04 mapResource overrides provider and name', async () => {
+  it('mapResource overrides provider and name', async () => {
     const mapResource = vi.fn(() => ({ provider: 'openai', name: 'gpt-5.4-custom' }));
     const h = harness({ mapResource });
     const t = hooks(h.telemetry);
@@ -206,7 +180,7 @@ describe('VAI-04 generation record', () => {
     expect(mapResource).toHaveBeenCalledWith({ provider: 'my-proxy.chat', modelId: 'gpt-5.4' });
   });
 
-  it.each([undefined, null])('VAI-04 mapResource returning %s keeps the default', async (none) => {
+  it.each([undefined, null])('mapResource returning %s keeps the default', async (none) => {
     const h = harness({ mapResource: () => none });
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001'));
@@ -217,8 +191,8 @@ describe('VAI-04 generation record', () => {
   });
 });
 
-describe('VAI-06 tool execution record', () => {
-  it('VAI-06 marks a failed tool with the error code', async () => {
+describe('tool execution record', () => {
+  it('marks a failed tool with the error code', async () => {
     const h = harness();
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001'));
@@ -240,7 +214,7 @@ describe('VAI-06 tool execution record', () => {
     expect(records[1]!.resource).not.toHaveProperty('modality');
   });
 
-  it('VAI-09 onToolExecutionStart for an untracked call does nothing', async () => {
+  it('onToolExecutionStart for an untracked call does nothing', async () => {
     const h = harness();
     const t = hooks(h.telemetry);
     t.onToolExecutionStart(toolEnd('call-unknown01', 'tc'));
@@ -249,8 +223,8 @@ describe('VAI-06 tool execution record', () => {
   });
 });
 
-describe('VAI-07 embedding and reranking', () => {
-  it('VAI-07 measures embedding duration from its start', async () => {
+describe('embedding and reranking', () => {
+  it('measures embedding duration from its start', async () => {
     const now = vi.spyOn(performance, 'now').mockReturnValueOnce(1000).mockReturnValueOnce(1042.6);
     const h = harness();
     const t = hooks(h.telemetry);
@@ -267,7 +241,7 @@ describe('VAI-07 embedding and reranking', () => {
     });
   });
 
-  it.each([Number.NaN, -3, 2.5])('VAI-07 omits embedding input_tokens %s', async (tokens) => {
+  it.each([Number.NaN, -3, 2.5])('omits embedding input_tokens %s', async (tokens) => {
     const h = harness();
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001', { operationId: 'ai.embed' }));
@@ -277,7 +251,7 @@ describe('VAI-07 embedding and reranking', () => {
     expect(record!.timing).not.toHaveProperty('duration_ms');
   });
 
-  it('VAI-07 numbers reranks and measures them from their start', async () => {
+  it('numbers reranks and measures them from their start', async () => {
     vi.spyOn(performance, 'now').mockReturnValueOnce(10).mockReturnValueOnce(15);
     const h = harness();
     const t = hooks(h.telemetry);
@@ -295,7 +269,7 @@ describe('VAI-07 embedding and reranking', () => {
     expect(records[0]!.usage.llm).toEqual({ requests: 1 });
   });
 
-  it('VAI-07 ignores embed and rerank starts for untracked calls', async () => {
+  it('ignores embed and rerank starts for untracked calls', async () => {
     const h = harness();
     const t = hooks(h.telemetry);
     t.onEmbedStart(embedEvent('call-unknown01', 'call-embed0001'));
@@ -307,8 +281,8 @@ describe('VAI-07 embedding and reranking', () => {
   });
 });
 
-describe('VAI-09 run identifiers', () => {
-  it('VAI-09 run type follows the root operation', async () => {
+describe('run identifiers', () => {
+  it('run type follows the root operation', async () => {
     const h = harness();
     const t = hooks(h.telemetry);
     const operations = [
@@ -333,7 +307,7 @@ describe('VAI-09 run identifiers', () => {
     ]);
   });
 
-  it('VAI-09 an empty functionId sets no run name', async () => {
+  it('an empty functionId sets no run name', async () => {
     const h = harness();
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001', { functionId: '' }));
@@ -343,8 +317,8 @@ describe('VAI-09 run identifiers', () => {
   });
 });
 
-describe('VAI-08 attribution at onStart', () => {
-  it('VAI-08 skips an operation without environment, logging only the operation id', async () => {
+describe('attribution at onStart', () => {
+  it('skips an operation without environment, logging only the operation id', async () => {
     const h = harness({ attributionDefaults: { account_id: 'acct_42' } });
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001', { operationId: 'ai.embed' }));
@@ -355,7 +329,7 @@ describe('VAI-08 attribution at onStart', () => {
     ]);
   });
 
-  it('VAI-08 the snapshot taken at onStart is not changed by later events', async () => {
+  it('the snapshot taken at onStart is not changed by later events', async () => {
     const context = { audr: { environment: 'test', account_id: 'first' } };
     const h = harness();
     const t = hooks(h.telemetry);
@@ -367,27 +341,13 @@ describe('VAI-08 attribution at onStart', () => {
   });
 });
 
-describe('VAI-11 bounded state and cleanup', () => {
-  it('VAI-11 evicts the oldest operation and drops its later events', async () => {
-    const h = harness({ maxTrackedOperations: 2 });
-    const t = hooks(h.telemetry);
-    t.onStart(start('call-00000001'));
-    t.onStart(start('call-00000002'));
-    t.onStart(start('call-00000003'));
-    t.onLanguageModelCallEnd(modelEnd('call-00000001'));
-    t.onLanguageModelCallEnd(modelEnd('call-00000002'));
-    t.onLanguageModelCallEnd(modelEnd('call-00000003'));
-    const records = await h.records();
-    expect(records.map((r) => r.run.run_id)).toEqual(['call-00000002', 'call-00000003']);
-    expect(h.logger.warnings).toEqual(['@openaudr/adapter-vercel-ai: OPERATION_EVICTED (count=1)']);
-  });
-
-  it('VAI-11 an embed attempt that never ends is released with its run, without a warning', async () => {
+describe('state cleanup', () => {
+  it('an embed attempt that never ends is released with its run, without a warning', async () => {
     vi.spyOn(performance, 'now')
       .mockReturnValueOnce(0)
       .mockReturnValueOnce(100)
       .mockReturnValueOnce(130);
-    const h = harness({ maxTrackedOperations: 1 });
+    const h = harness();
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001', { operationId: 'ai.embed' }));
     t.onEmbedStart(embedEvent('call-00000001', 'call-embed0001'));
@@ -399,7 +359,7 @@ describe('VAI-11 bounded state and cleanup', () => {
     expect(h.logger.lines).toEqual([]);
   });
 
-  it('VAI-11 a retried rerank is measured from its last attempt', async () => {
+  it('a retried rerank is measured from its last attempt', async () => {
     vi.spyOn(performance, 'now')
       .mockReturnValueOnce(0)
       .mockReturnValueOnce(50)
@@ -418,7 +378,7 @@ describe('VAI-11 bounded state and cleanup', () => {
     ['onEnd', (t: Hooks) => t.onEnd(end('call-00000001'))],
     ['onAbort', (t: Hooks) => t.onAbort({ callId: 'call-00000001', steps: [] })],
     ['onError', (t: Hooks) => t.onError({ callId: 'call-00000001', error: new Error('x') })],
-  ])('VAI-11 %s releases the run', async (_, release) => {
+  ])('%s releases the run', async (_, release) => {
     const h = harness();
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001'));
@@ -430,7 +390,7 @@ describe('VAI-11 bounded state and cleanup', () => {
   });
 
   it.each([undefined, null, 'error', { callId: 42 }, new Error('x')])(
-    'VAI-11 onError ignores a payload without a string callId',
+    'onError ignores a payload without a string callId',
     (payload) => {
       const h = harness();
       const t = hooks(h.telemetry);
@@ -443,8 +403,8 @@ describe('VAI-11 bounded state and cleanup', () => {
   );
 });
 
-describe('VAI-13 hooks never break generation', () => {
-  it('VAI-13 a throwing client is logged as HOOK_FAILED', () => {
+describe('hooks never break generation', () => {
+  it('a throwing client is logged as HOOK_FAILED', () => {
     const logger = { warn: vi.fn(), error: vi.fn() };
     const client = {
       record: () => {
@@ -463,7 +423,7 @@ describe('VAI-13 hooks never break generation', () => {
     );
   });
 
-  it('VAI-13 a throwing mapResource skips the record with MAP_RESOURCE_FAILED', async () => {
+  it('a throwing mapResource skips the record with MAP_RESOURCE_FAILED', async () => {
     const h = harness({
       mapResource: () => raise('not an error'),
     });
@@ -477,7 +437,7 @@ describe('VAI-13 hooks never break generation', () => {
     ]);
   });
 
-  it('VAI-13 a malformed event is logged as HOOK_FAILED in every hook', () => {
+  it('a malformed event is logged as HOOK_FAILED in every hook', () => {
     const h = harness();
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001'));
@@ -510,7 +470,7 @@ describe('VAI-13 hooks never break generation', () => {
     ]);
   });
 
-  it('VAI-13 a throwing logger is ignored', () => {
+  it('a throwing logger is ignored', () => {
     const logger = {
       warn: () => {
         throw new Error('logger down');
@@ -527,7 +487,7 @@ describe('VAI-13 hooks never break generation', () => {
     }).not.toThrow();
   });
 
-  it('VAI-13 executeTool runs execute when its options cannot be read', async () => {
+  it('executeTool runs execute when its options cannot be read', async () => {
     const h = harness();
     const t = hooks(h.telemetry);
     const options = {
@@ -543,7 +503,7 @@ describe('VAI-13 hooks never break generation', () => {
     ]);
   });
 
-  it('VAI-10 executeTool for an untracked call runs execute as is', async () => {
+  it('executeTool for an untracked call runs execute as is', async () => {
     const h = harness();
     const t = hooks(h.telemetry);
     const error = new Error('x');
@@ -553,8 +513,8 @@ describe('VAI-13 hooks never break generation', () => {
   });
 });
 
-describe('VAI-14 rejected records are reported without values', () => {
-  it('VAI-14 production without an account logs the issue path', async () => {
+describe('rejected records are reported without values', () => {
+  it('production without an account logs the issue path', async () => {
     const h = harness({ attributionDefaults: { environment: 'production' } });
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001'));
@@ -565,7 +525,7 @@ describe('VAI-14 rejected records are reported without values', () => {
     ]);
   });
 
-  it('VAI-14 a client that has shut down reports the outcome without issues', async () => {
+  it('a client that has shut down reports the outcome without issues', async () => {
     const h = harness();
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001'));
@@ -577,12 +537,12 @@ describe('VAI-14 rejected records are reported without values', () => {
   });
 });
 
-describe('VAI-15 provider slug', () => {
+describe('provider slug', () => {
   it.each([
     ['ai.generateText', 'onLanguageModelCallEnd'],
     ['ai.embed', 'onEmbedEnd'],
     ['ai.rerank', 'onRerankEnd'],
-  ] as const)('VAI-15 skips an unmappable provider in %s', async (operationId, hook) => {
+  ] as const)('skips an unmappable provider in %s', async (operationId, hook) => {
     const h = harness();
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001', { operationId }));
@@ -598,7 +558,7 @@ describe('VAI-15 provider slug', () => {
     ]);
   });
 
-  it.each(['Open AI', 123])('VAI-15 skips a mapResource provider %s', async (provider) => {
+  it.each(['Open AI', 123])('skips a mapResource provider %s', async (provider) => {
     const h = harness({ mapResource: () => ({ provider: provider as string, name: 'x' }) });
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001'));
@@ -610,8 +570,8 @@ describe('VAI-15 provider slug', () => {
   });
 });
 
-describe('VAI-17 unsupported operations', () => {
-  it('VAI-17 an object operation is not tracked and is reported once per operation id', async () => {
+describe('unsupported operations', () => {
+  it('an object operation is not tracked and is reported once per operation id', async () => {
     const h = harness();
     const t = hooks(h.telemetry);
     t.onStart(start('call-00000001', { operationId: 'ai.generateObject' }));

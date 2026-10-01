@@ -11,8 +11,8 @@ function source(runtimeContext: Record<string, unknown> = {}): AttributionSource
   return { operationId: 'ai.generateText', functionId: undefined, runtimeContext };
 }
 
-describe('VAI-08 default runtimeContext reader', () => {
-  it('VAI-08 keeps the string fields and string labels', () => {
+describe('default runtimeContext reader', () => {
+  it('keeps the string fields and string labels', () => {
     expect(
       readRuntimeAttribution(
         source({
@@ -34,7 +34,7 @@ describe('VAI-08 default runtimeContext reader', () => {
     });
   });
 
-  it('VAI-08 unknown fields are dropped', () => {
+  it('unknown fields are dropped', () => {
     expect(
       readRuntimeAttribution(
         source({ audr: { account_id: 42, environment: 'test', cost_center: 'x', email: 'e' } }),
@@ -46,30 +46,30 @@ describe('VAI-08 default runtimeContext reader', () => {
     ['labels with a non-string value', { labels: { a: 'x', b: 1 } }],
     ['labels as an array', { labels: ['x'] }],
     ['labels as a string', { labels: 'x' }],
-  ])('VAI-08 drops %s', (_, audr) => {
+  ])('drops %s', (_, audr) => {
     expect(readRuntimeAttribution(source({ audr }))).toEqual({});
   });
 
   it.each([undefined, null, 'acct', 42, ['a'], new Map()])(
-    'VAI-08 no per-call attribution when audr is %s',
+    'no per-call attribution when audr is %s',
     (audr) => {
       expect(readRuntimeAttribution(source({ audr }))).toBeUndefined();
     },
   );
 
-  it('VAI-08 accepts a null-prototype object', () => {
+  it('accepts a null-prototype object', () => {
     const audr = Object.assign(Object.create(null) as object, { account_id: 'a' });
     expect(readRuntimeAttribution(source({ audr }))).toEqual({ account_id: 'a' });
   });
 
-  it('VAI-08 ignores an inherited audr namespace', () => {
+  it('ignores an inherited audr namespace', () => {
     const runtimeContext = Object.create({
       audr: { environment: 'production', account_id: 'attacker' },
     }) as Record<string, unknown>;
     expect(readRuntimeAttribution(source(runtimeContext))).toBeUndefined();
   });
 
-  it('VAI-08 ignores attribution fields inherited through Object.prototype', () => {
+  it('ignores attribution fields inherited through Object.prototype', () => {
     Object.defineProperty(Object.prototype, 'account_id', {
       configurable: true,
       value: 'attacker',
@@ -84,8 +84,8 @@ describe('VAI-08 default runtimeContext reader', () => {
   });
 });
 
-describe('VAI-08 merge', () => {
-  it('VAI-08 per-call wins field by field', () => {
+describe('merge', () => {
+  it('per-call wins field by field', () => {
     expect(
       mergeAttribution(
         { environment: 'production', account_id: 'a', user_id: 'u' },
@@ -94,7 +94,7 @@ describe('VAI-08 merge', () => {
     ).toEqual({ environment: 'production', account_id: 'b', user_id: 'u' });
   });
 
-  it('VAI-08 labels merge by key', () => {
+  it('labels merge by key', () => {
     expect(
       mergeAttribution(
         { environment: 'test', labels: { team: 'a', region: 'eu' } },
@@ -103,39 +103,39 @@ describe('VAI-08 merge', () => {
     ).toEqual({ environment: 'test', labels: { team: 'b', region: 'eu' } });
   });
 
-  it('VAI-08 undefined fields do not erase defaults', () => {
+  it('undefined fields do not erase defaults', () => {
     expect(
       mergeAttribution({ environment: 'test', account_id: 'a' }, { account_id: undefined }),
     ).toEqual({ environment: 'test', account_id: 'a' });
   });
 
-  it('VAI-08 nothing on either side is empty', () => {
+  it('nothing on either side is empty', () => {
     expect(mergeAttribution(undefined, undefined)).toEqual({});
   });
 });
 
-describe('VAI-08 resolution', () => {
-  it('VAI-08 defaults only', () => {
+describe('resolution', () => {
+  it('defaults only', () => {
     expect(resolveAttribution(source(), { environment: 'test' })).toEqual({
       kind: 'resolved',
       attribution: { environment: 'test' },
     });
   });
 
-  it('VAI-08 per-call only', () => {
+  it('per-call only', () => {
     expect(resolveAttribution(source({ audr: { environment: 'staging' } }), undefined)).toEqual({
       kind: 'resolved',
       attribution: { environment: 'staging' },
     });
   });
 
-  it('VAI-08 nothing resolves', () => {
+  it('nothing resolves', () => {
     expect(resolveAttribution(source(), { account_id: 'a' })).toEqual({
       kind: 'unresolved',
     });
   });
 
-  it('VAI-08 a non-object audr value leaves the defaults', () => {
+  it('a non-object audr value leaves the defaults', () => {
     expect(resolveAttribution(source({ audr: 'acct' }), { environment: 'test' })).toEqual({
       kind: 'resolved',
       attribution: { environment: 'test' },

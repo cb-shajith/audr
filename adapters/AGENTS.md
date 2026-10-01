@@ -14,7 +14,8 @@ This file summarises the rules to observe and the steps to follow.
    attributed, skip it with a value-free warning rather than billing it to a guess.
 4. The SDK mints `record_id`. Place the runtime's own identifiers on `run.run_id` and
    `run.span_id`.
-5. Make the runtime an optional extra and import it at activation, never at package import.
+5. In Python, make the runtime an optional extra and import it at activation, never at
+   package import. In TypeScript, make it a peer dependency and import only its types.
 
 ## Creating a new adapter
 
@@ -48,8 +49,7 @@ For a TypeScript adapter, the steps differ as follows. The Vercel AI adapter
    `core/typescript/` (`tsconfig*.json`, `eslint.config.js`, `vitest.config.ts`, the
    Prettier files, `LICENSE`, `NOTICE`). In `package.json`: name `@openaudr/adapter-<target>`,
    ESM only, `engines.node` as the core, the runtime and `@openaudr/audr` as peer
-   dependencies with the runtime optional, `@openaudr/audr` as a `file:` development
-   dependency.
+   dependencies and as development dependencies from npm.
 3. **Implement** the hook and lifecycle, attribution, then mapping, with tests alongside.
    Import only the runtime's types.
 4. **Wire the repository:** `.github/workflows/adapter-<target>-typescript-verify.yml`

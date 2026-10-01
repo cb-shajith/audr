@@ -39,8 +39,8 @@ function usage(counts: Counts): LanguageModelUsage {
   };
 }
 
-describe('VAI-05 token arithmetic', () => {
-  it('VAI-05 cached and reasoning tokens', () => {
+describe('token arithmetic', () => {
+  it('cached and reasoning tokens', () => {
     expect(
       toLlmUsage(
         usage({ input: 120, noCache: 100, cacheRead: 20, output: 50, text: 40, reasoning: 10 }),
@@ -54,7 +54,7 @@ describe('VAI-05 token arithmetic', () => {
     });
   });
 
-  it('VAI-05 no detail breakdown: subtract cache reads, writes and reasoning', () => {
+  it('no detail breakdown: subtract cache reads, writes and reasoning', () => {
     expect(
       toLlmUsage(usage({ input: 120, cacheRead: 20, cacheWrite: 5, output: 50, reasoning: 10 })),
     ).toEqual({
@@ -67,11 +67,11 @@ describe('VAI-05 token arithmetic', () => {
     });
   });
 
-  it('VAI-05 unreported counters leave only requests', () => {
+  it('unreported counters leave only requests', () => {
     expect(toLlmUsage(usage({}))).toEqual({ requests: 1 });
   });
 
-  it('VAI-05 totals alone pass through', () => {
+  it('totals alone pass through', () => {
     expect(toLlmUsage(usage({ input: 12, output: 3, total: 15 }))).toEqual({
       input_tokens: 12,
       output_tokens: 3,
@@ -79,7 +79,7 @@ describe('VAI-05 token arithmetic', () => {
     });
   });
 
-  it('VAI-05 subtraction never goes below zero', () => {
+  it('subtraction never goes below zero', () => {
     expect(toLlmUsage(usage({ input: 5, cacheRead: 9, output: 2, reasoning: 4 }))).toEqual({
       input_tokens: 0,
       output_tokens: 0,
@@ -90,7 +90,7 @@ describe('VAI-05 token arithmetic', () => {
   });
 
   it.each([Number.NaN, -1, 1.5, Number.POSITIVE_INFINITY])(
-    'VAI-05 a counter of %s is treated as unreported',
+    'a counter of %s is treated as unreported',
     (bad) => {
       expect(
         toLlmUsage(
@@ -113,7 +113,7 @@ describe('VAI-05 token arithmetic', () => {
     },
   );
 
-  it('VAI-05 totalTokens and raw are never copied', () => {
+  it('totalTokens and raw are never copied', () => {
     const result = toLlmUsage({ ...usage({ total: 99 }), raw: { total: 99 } });
     expect(Object.keys(result)).toEqual(['requests']);
   });
@@ -143,7 +143,7 @@ describe('VAI-05 token arithmetic', () => {
   });
 });
 
-describe('VAI-15 provider slug', () => {
+describe('provider slug', () => {
   it.each([
     ['openai.responses', 'openai'],
     ['openai.chat', 'openai'],
@@ -167,11 +167,11 @@ describe('VAI-15 provider slug', () => {
     ['__weird__', 'weird'],
     ['gatewayish.chat', 'gatewayish'],
     ['azure-foundry.chat', 'azure-foundry'],
-  ])('VAI-15 %s → %s', (provider, slug) => {
+  ])('%s → %s', (provider, slug) => {
     expect(providerSlug(provider)).toBe(slug);
   });
 
-  it.each(['', '.chat', '...', '___'])('VAI-15 %j has no slug', (provider) => {
+  it.each(['', '.chat', '...', '___'])('%j has no slug', (provider) => {
     expect(providerSlug(provider)).toBeUndefined();
   });
 
@@ -186,8 +186,8 @@ describe('VAI-15 provider slug', () => {
   });
 });
 
-describe('VAI-09 identifiers', () => {
-  it('VAI-09 span ids carry the operation kind and its own call id', () => {
+describe('identifiers', () => {
+  it('span ids carry the operation kind and its own call id', () => {
     expect(modelSpanId('call-a', 2)).toBe('model:call-a:2');
     expect(toolSpanId('call-a', 3, 'tc-1')).toBe('tool:call-a:3:tc-1');
     expect(embedSpanId('call-e')).toBe('embed:call-e');
@@ -201,7 +201,7 @@ describe('VAI-09 identifiers', () => {
     ['ai.embedMany', 'single_call'],
     ['ai.rerank', 'single_call'],
     ['ai.generateObject', 'single_call'],
-  ])('VAI-09 run type of %s is %s', (operationId, runType) => {
+  ])('run type of %s is %s', (operationId, runType) => {
     expect(runTypeFor(operationId)).toBe(runType);
   });
 });

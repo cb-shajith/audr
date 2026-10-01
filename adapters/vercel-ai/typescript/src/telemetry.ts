@@ -11,7 +11,7 @@ import {
 } from '@openaudr/audr';
 
 import { type AttributionSource, resolveAttribution } from './attribution.js';
-import { Diagnostics, errorName, formatIssues } from './diagnostics.js';
+import { Diagnostics, errorName, formatIssues, SILENT } from './diagnostics.js';
 import {
   counter,
   durationMs,
@@ -35,8 +35,6 @@ import {
   type TrackedCall,
 } from './runs.js';
 
-const DEFAULT_MAX_TRACKED_OPERATIONS = 10_000;
-
 export interface AudrTelemetryOptions {
   /** The host's client. The adapter never creates, flushes or shuts it down. */
   readonly client: Client;
@@ -45,9 +43,10 @@ export interface AudrTelemetryOptions {
   /** Overrides the provider slug and model name for a model call. Returning `undefined` or `null` keeps the default; throwing skips the record. */
   readonly mapResource?:
     ((source: ResourceSource) => ResourceMapping | null | undefined) | undefined;
-  /** Upper bound on concurrently tracked operations, sub-agents included. Integer >= 1. Default 10_000. */
-  readonly maxTrackedOperations?: number | undefined;
-  /** Where diagnostics go. Default `console`. Messages never carry record values. */
+  /**
+   * Where diagnostics go. Default: none, the adapter logs nothing. Pass `console` or any
+   * logger with `warn` and `error` to receive them. Messages never carry record values.
+   */
   readonly logger?: Logger | undefined;
 }
 
@@ -85,8 +84,8 @@ interface RecordParts {
  * ```
  *
  * Reads usage, identifiers and timings only; never prompts, messages, content, tool inputs,
- * tool outputs or errors. Throws `ConfigurationError` for invalid options; its hooks never
- * throw into the AI SDK.
+ * tool outputs or errors. Throws `ConfigurationError` when `client` has no `record()`; its
+ * hooks never throw into the AI SDK.
  */
 export function audrTelemetry(options: AudrTelemetryOptions): Telemetry {
   return new AudrTelemetry(options);
@@ -101,27 +100,14 @@ class AudrTelemetry implements Telemetry {
   readonly #warnedUnsupported = new Set<string>();
 
   constructor(options: AudrTelemetryOptions) {
-    const candidate = options as Partial<AudrTelemetryOptions> | null | undefined;
-    if (typeof (candidate?.client as Partial<Client> | undefined)?.record !== 'function') {
+    if (typeof (options.client as Partial<Client> | undefined)?.record !== 'function') {
       throw new ConfigurationError('client must implement record()');
-    }
-    const maxTrackedOperations = options.maxTrackedOperations ?? DEFAULT_MAX_TRACKED_OPERATIONS;
-    if (!Number.isInteger(maxTrackedOperations) || maxTrackedOperations < 1) {
-      throw new ConfigurationError('maxTrackedOperations must be an integer >= 1');
-    }
-    const defaults: unknown = options.attributionDefaults;
-    if (defaults !== undefined && (typeof defaults !== 'object' || defaults === null)) {
-      throw new ConfigurationError('attributionDefaults must be an object');
-    }
-    const mapResource: unknown = options.mapResource;
-    if (mapResource !== undefined && typeof mapResource !== 'function') {
-      throw new ConfigurationError('mapResource must be a function');
     }
     this.#client = options.client;
     this.#defaults = options.attributionDefaults;
     this.#mapResource = options.mapResource;
-    this.#diagnostics = new Diagnostics(options.logger ?? console);
-    this.#tracker = new CallTracker(maxTrackedOperations);
+    this.#diagnostics = new Diagnostics(options.logger ?? SILENT);
+    this.#tracker = new CallTracker();
   }
 
   onStart(event: EventOf<'onStart'>): void {
@@ -132,7 +118,7 @@ class AudrTelemetry implements Telemetry {
       }
       const toolSpan = this.#tracker.currentToolSpan();
       if (toolSpan !== undefined) {
-        this.#warnIfEvicted(this.#tracker.startChild(event.callId, event.operationId, toolSpan));
+        this.#tracker.startChild(event.callId, event.operationId, toolSpan);
         return;
       }
       const source: AttributionSource = {
@@ -146,15 +132,13 @@ class AudrTelemetry implements Telemetry {
           this.#diagnostics.warn('ATTRIBUTION_UNRESOLVED', { operation: event.operationId });
           return;
         case 'resolved':
-          this.#warnIfEvicted(
-            this.#tracker.startRoot({
-              callId: event.callId,
-              operationId: event.operationId,
-              attribution: resolution.attribution,
-              runType: runTypeFor(event.operationId),
-              name: source.functionId,
-            }),
-          );
+          this.#tracker.startRoot({
+            callId: event.callId,
+            operationId: event.operationId,
+            attribution: resolution.attribution,
+            runType: runTypeFor(event.operationId),
+            name: source.functionId,
+          });
           return;
         default: {
           const unhandled: never = resolution;
@@ -361,10 +345,6 @@ class AudrTelemetry implements Telemetry {
     if (this.#warnedUnsupported.has(operationId)) return;
     this.#warnedUnsupported.add(operationId);
     this.#diagnostics.warn('OPERATION_UNSUPPORTED', { operation: operationId });
-  }
-
-  #warnIfEvicted(count: number): void {
-    if (count > 0) this.#diagnostics.warn('OPERATION_EVICTED', { count });
   }
 
   /** Runs a hook body; an exception is logged by class name and never reaches the AI SDK. */

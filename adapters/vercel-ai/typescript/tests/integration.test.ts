@@ -11,11 +11,12 @@ import {
   registerTelemetry,
   rerank,
   streamText,
+  type Telemetry,
   tool,
   ToolLoopAgent,
 } from 'ai';
 import { MockLanguageModelV4 } from 'ai/test';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
 import { TOOL_ERROR_CODE } from '../src/index.js';
@@ -44,15 +45,15 @@ afterEach(() => {
   globalThis.AI_SDK_DEFAULT_PROVIDER = undefined;
 });
 
-describe('VAI-01 entry point', () => {
-  it('VAI-01 meters a call when registered globally', async () => {
+describe('entry point', () => {
+  it('meters a call when registered globally', async () => {
     const h = harness();
     registerTelemetry(h.telemetry);
     await generateText({ model: model(), prompt: 'x' });
     expect(await h.records()).toHaveLength(1);
   });
 
-  it('VAI-01 meters only the calls that carry a per-call integration', async () => {
+  it('meters only the calls that carry a per-call integration', async () => {
     const h = harness();
     await generateText({ model: model(), prompt: 'x', telemetry: { integrations: [h.telemetry] } });
     await generateText({ model: model(), prompt: 'x' });
@@ -60,8 +61,8 @@ describe('VAI-01 entry point', () => {
   });
 });
 
-describe('VAI-04 generation records', () => {
-  it('VAI-04 two-step tool loop: two generations and one tool execution in one run', async () => {
+describe('generation records', () => {
+  it('two-step tool loop: two generations and one tool execution in one run', async () => {
     const h = harness();
     await generateText({
       model: model({ toolCalls: [{ id: 'tc-1', name: 'lookup', input: '{"id":"42"}' }] }),
@@ -105,7 +106,7 @@ describe('VAI-04 generation records', () => {
     expect(h.client.stats.submitted).toBe(3);
   });
 
-  it('VAI-04 streamed call: one generation record with the final usage', async () => {
+  it('streamed call: one generation record with the final usage', async () => {
     const h = harness();
     const result = streamText({ model: model(), prompt: 'x', ...withAudr(h.telemetry) });
     await result.consumeStream();
@@ -118,7 +119,7 @@ describe('VAI-04 generation records', () => {
     });
   });
 
-  it('VAI-04 provider-echoed model id becomes resource.name', async () => {
+  it('provider-echoed model id becomes resource.name', async () => {
     const h = harness();
     await generateText({
       model: model({ modelId: 'gpt-5.4', echoedModelId: 'gpt-5.4-2026-01-01' }),
@@ -129,7 +130,7 @@ describe('VAI-04 generation records', () => {
     expect(record!.resource.name).toBe('gpt-5.4-2026-01-01');
   });
 
-  it('VAI-04 ToolLoopAgent with prepareCall carries per-request attribution', async () => {
+  it('ToolLoopAgent with prepareCall carries per-request attribution', async () => {
     const h = harness({ attributionDefaults: { environment: 'production' } });
     const agent = new ToolLoopAgent({
       model: model({ toolCalls: [{ id: 'tc-1', name: 'lookup', input: '{"id":"42"}' }] }),
@@ -156,8 +157,8 @@ describe('VAI-04 generation records', () => {
   });
 });
 
-describe('VAI-06 tool execution records', () => {
-  it('VAI-06 a throwing tool yields a tool_execution record with the error code', async () => {
+describe('tool execution records', () => {
+  it('a throwing tool yields a tool_execution record with the error code', async () => {
     const h = harness();
     await generateText({
       model: model({ toolCalls: [{ id: 'tc-1', name: 'failing', input: '{"id":"42"}' }] }),
@@ -176,7 +177,7 @@ describe('VAI-06 tool execution records', () => {
     expect(h.logger.lines.join('\n')).not.toContain('lookup failed');
   });
 
-  it('VAI-06 provider-executed tools produce no tool_execution record', async () => {
+  it('provider-executed tools produce no tool_execution record', async () => {
     const h = harness();
     const searching = new MockLanguageModelV4({
       provider: 'openai.responses',
@@ -219,8 +220,8 @@ describe('VAI-06 tool execution records', () => {
   });
 });
 
-describe('VAI-07 embedding and reranking records', () => {
-  it('VAI-07 embed yields one embedding record with its input tokens', async () => {
+describe('embedding and reranking records', () => {
+  it('embed yields one embedding record with its input tokens', async () => {
     const h = harness();
     await embed({ model: embeddingModel(), value: 'x', ...withAudr(h.telemetry) });
     const records = await h.records();
@@ -239,7 +240,7 @@ describe('VAI-07 embedding and reranking records', () => {
     expect(records[0]!.timing.duration_ms).toBeGreaterThanOrEqual(0);
   });
 
-  it('VAI-07 chunked embedMany yields one record per provider call in one run', async () => {
+  it('chunked embedMany yields one record per provider call in one run', async () => {
     const h = harness();
     await embedMany({
       model: embeddingModel({ maxEmbeddingsPerCall: 2 }),
@@ -253,7 +254,7 @@ describe('VAI-07 embedding and reranking records', () => {
     expect(records.every((r) => r.run.span_id.startsWith('embed:'))).toBe(true);
   });
 
-  it('VAI-07 an embedding without reported usage has no input_tokens and is accepted', async () => {
+  it('an embedding without reported usage has no input_tokens and is accepted', async () => {
     const h = harness();
     await embed({
       model: embeddingModel({ tokens: 'unreported' }),
@@ -266,7 +267,7 @@ describe('VAI-07 embedding and reranking records', () => {
     expect(h.logger.lines).toEqual([]);
   });
 
-  it('VAI-07 rerank yields one reranking record', async () => {
+  it('rerank yields one reranking record', async () => {
     const h = harness();
     await rerank({
       model: rerankingModel(),
@@ -290,8 +291,8 @@ describe('VAI-07 embedding and reranking records', () => {
   });
 });
 
-describe('VAI-08 attribution through the SDK', () => {
-  it('VAI-08 per-call attribution overrides defaults field by field', async () => {
+describe('attribution through the SDK', () => {
+  it('per-call attribution overrides defaults field by field', async () => {
     const h = harness({ attributionDefaults: { environment: 'production', account_id: 'a' } });
     await generateText({
       model: model({ toolCalls: [{ id: 'tc-1', name: 'lookup', input: '{"id":"42"}' }] }),
@@ -307,7 +308,7 @@ describe('VAI-08 attribution through the SDK', () => {
     }
   });
 
-  it('VAI-08 runtimeContext not whitelisted leaves only the defaults', async () => {
+  it('runtimeContext not whitelisted leaves only the defaults', async () => {
     const h = harness({ attributionDefaults: { environment: 'test', account_id: 'a' } });
     await generateText({
       model: model(),
@@ -319,7 +320,7 @@ describe('VAI-08 attribution through the SDK', () => {
     expect(record!.attribution).toEqual({ environment: 'test', account_id: 'a' });
   });
 
-  it('VAI-08 embed and rerank read runtimeContext too', async () => {
+  it('embed and rerank read runtimeContext too', async () => {
     const h = harness();
     await embed({
       model: embeddingModel(),
@@ -337,8 +338,8 @@ describe('VAI-08 attribution through the SDK', () => {
   });
 });
 
-describe('VAI-09 run identifiers', () => {
-  it('VAI-09 separate calls get separate runs and fresh record ids', async () => {
+describe('run identifiers', () => {
+  it('separate calls get separate runs and fresh record ids', async () => {
     const h = harness();
     await generateText({ model: model(), prompt: 'x', ...withAudr(h.telemetry) });
     await generateText({ model: model(), prompt: 'x', ...withAudr(h.telemetry) });
@@ -349,7 +350,7 @@ describe('VAI-09 run identifiers', () => {
   });
 });
 
-describe('VAI-09 tool spans stay unique', () => {
+describe('tool spans stay unique', () => {
   function reusingIds(): MockLanguageModelV4 {
     let calls = 0;
     const reply = (content: unknown, unified: 'tool-calls' | 'stop') => ({
@@ -382,7 +383,7 @@ describe('VAI-09 tool spans stay unique', () => {
     });
   }
 
-  it('VAI-09 a provider reusing a tool call id across steps gets distinct spans', async () => {
+  it('a provider reusing a tool call id across steps gets distinct spans', async () => {
     const h = harness();
     await generateText({
       model: reusingIds(),
@@ -400,9 +401,11 @@ describe('VAI-09 tool spans stay unique', () => {
   });
 });
 
-describe('VAI-11 failure cleanup', () => {
-  it('VAI-11 failed embedding calls leave no state behind', async () => {
-    const h = harness({ maxTrackedOperations: 2 });
+describe('failure cleanup', () => {
+  it('failed embedding calls leave no state behind', async () => {
+    const h = harness();
+    const hooks = h.telemetry as Required<Telemetry>;
+    const onStart = vi.spyOn(hooks, 'onStart');
     let calls = 0;
     const flaky = embeddingModel();
     const original = flaky.doEmbed.bind(flaky);
@@ -415,11 +418,22 @@ describe('VAI-11 failure cleanup', () => {
         () => undefined,
       );
     }
+    expect(onStart).toHaveBeenCalledTimes(6);
+    for (const [{ callId }] of onStart.mock.calls) {
+      hooks.onEmbedEnd({
+        callId,
+        embedCallId: 'late',
+        operationId: 'ai.embed',
+        provider: 'openai.embedding',
+        modelId: 'text-embedding-3-small',
+        usage: { tokens: 1 },
+      } as never);
+    }
     expect(await h.records()).toHaveLength(3);
     expect(h.logger.lines).toEqual([]);
   });
 
-  it('VAI-11 a call that throws after one model call keeps its record', async () => {
+  it('a call that throws after one model call keeps its record', async () => {
     const h = harness();
     let calls = 0;
     const flaky = model();
@@ -451,8 +465,8 @@ describe('VAI-11 failure cleanup', () => {
   });
 });
 
-describe('VAI-15 provider slugs through the SDK', () => {
-  it('VAI-15 a gateway model string meters as vercel-ai-gateway with the name verbatim', async () => {
+describe('provider slugs through the SDK', () => {
+  it('a gateway model string meters as vercel-ai-gateway with the name verbatim', async () => {
     const h = harness();
     globalThis.AI_SDK_DEFAULT_PROVIDER = customProvider({
       languageModels: {
@@ -467,7 +481,7 @@ describe('VAI-15 provider slugs through the SDK', () => {
     });
   });
 
-  it('VAI-15 the README mapResource attributes gateway calls to the vendor', async () => {
+  it('the README mapResource attributes gateway calls to the vendor', async () => {
     const h = harness({
       mapResource: ({ provider, modelId }) => {
         if (provider !== 'gateway') return undefined;

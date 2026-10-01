@@ -5,12 +5,10 @@ on:
     branches: [main]
     paths:
       - "adapters/vercel-ai/typescript/**"
-      - "adapters/core/typescript/**"
       - ".github/workflows/adapter-vercel-ai-typescript-verify.yml"
   pull_request:
     paths:
       - "adapters/vercel-ai/typescript/**"
-      - "adapters/core/typescript/**"
       - ".github/workflows/adapter-vercel-ai-typescript-verify.yml"
 
 permissions:
@@ -43,9 +41,7 @@ jobs:
         with:
           node-version: "${{ matrix.node }}"
           cache: npm
-          cache-dependency-path: |
-            adapters/vercel-ai/typescript/package-lock.json
-            adapters/core/typescript/package-lock.json
+          cache-dependency-path: adapters/vercel-ai/typescript/package-lock.json
 
       - name: Install
         run: make install
@@ -74,9 +70,7 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: |
-            adapters/vercel-ai/typescript/package-lock.json
-            adapters/core/typescript/package-lock.json
+          cache-dependency-path: adapters/vercel-ai/typescript/package-lock.json
 
       - name: Install
         run: make install

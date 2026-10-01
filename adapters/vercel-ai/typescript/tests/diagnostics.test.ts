@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { errorName, formatDiagnostic, formatIssues } from '../src/diagnostics.js';
 
-describe('VAI-12 diagnostics carry no values', () => {
-  it('VAI-12 formats the code and fields in a fixed order', () => {
+describe('diagnostics carry no values', () => {
+  it('formats the code and fields in a fixed order', () => {
     expect(
       formatDiagnostic('RECORD_NOT_QUEUED', {
         issues: 'REQUIRED@/attribution/account_id',
@@ -16,12 +16,12 @@ describe('VAI-12 diagnostics carry no values', () => {
     expect(formatDiagnostic('HOOK_FAILED', { error: 'TypeError', hook: 'onEnd' })).toBe(
       '@openaudr/adapter-vercel-ai: HOOK_FAILED (hook=onEnd, error=TypeError)',
     );
-    expect(formatDiagnostic('OPERATION_EVICTED', { count: 3 })).toBe(
-      '@openaudr/adapter-vercel-ai: OPERATION_EVICTED (count=3)',
+    expect(formatDiagnostic('OPERATION_UNSUPPORTED', { operation: 'ai.generateObject' })).toBe(
+      '@openaudr/adapter-vercel-ai: OPERATION_UNSUPPORTED (operation=ai.generateObject)',
     );
   });
 
-  it('VAI-12 skips undefined fields and never includes unknown keys', () => {
+  it('skips undefined fields and never includes unknown keys', () => {
     expect(
       formatDiagnostic('ATTRIBUTION_UNRESOLVED', { operation: 'ai.embed', error: undefined }),
     ).toBe('@openaudr/adapter-vercel-ai: ATTRIBUTION_UNRESOLVED (operation=ai.embed)');
@@ -47,11 +47,11 @@ describe('VAI-12 diagnostics carry no values', () => {
     ['secret', 'string'],
     [undefined, 'undefined'],
     [{ message: 'secret' }, 'object'],
-  ])('VAI-12 errorName(%s) is %s', (error, name) => {
+  ])('errorName(%s) is %s', (error, name) => {
     expect(errorName(error)).toBe(name);
   });
 
-  it('VAI-12 errorName never reads a mutable Error.name', () => {
+  it('errorName never reads a mutable Error.name', () => {
     const error = Object.defineProperty(new Error('secret'), 'name', {
       get(): never {
         throw new TypeError('secret');
@@ -60,7 +60,7 @@ describe('VAI-12 diagnostics carry no values', () => {
     expect(errorName(error)).toBe('Error');
   });
 
-  it('VAI-12 errorName cannot throw while inspecting a hostile value', () => {
+  it('errorName cannot throw while inspecting a hostile value', () => {
     const error = new Proxy(new Error('secret'), {
       getPrototypeOf(): never {
         throw new TypeError('secret');
@@ -69,7 +69,7 @@ describe('VAI-12 diagnostics carry no values', () => {
     expect(errorName(error)).toBe('unknown');
   });
 
-  it('VAI-12 formats issues as code@path', () => {
+  it('formats issues as code@path', () => {
     expect(
       formatIssues({
         outcome: 'rejected_invalid',

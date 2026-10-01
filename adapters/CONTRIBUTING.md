@@ -61,15 +61,11 @@ and no `drain()`. Each hook submits its record before it returns. The host's shu
 order is: stop starting runtime calls, await the ones in flight, then
 `await client.shutdown()`.
 
-The runtime is an optional peer dependency (`peerDependenciesMeta`), and the adapter
-imports only its types, so installing the adapter does not pull the runtime in.
-`@openaudr/audr` is a peer dependency. Enforce the type-only rule with ESLint's
-`@typescript-eslint/no-restricted-imports` and `allowTypeImports`.
-
-Until `@openaudr/audr` is published on npm, the adapter's development dependency on it
-is `file:../../core/typescript`, and the package `Makefile`'s `install` target builds the
-core before `npm ci`. The [Vercel AI adapter](vercel-ai/typescript/AGENTS.md) implements all of
-this.
+The runtime and `@openaudr/audr` are peer dependencies, so the adapter uses the
+application's own copies, and the adapter imports only the runtime's types. Enforce the
+type-only rule with ESLint's `@typescript-eslint/no-restricted-imports` and
+`allowTypeImports`. Both are also development dependencies installed from npm. The
+[Vercel AI adapter](vercel-ai/typescript/AGENTS.md) implements all of this.
 
 ## What a new adapter ships
 

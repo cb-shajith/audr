@@ -38,8 +38,8 @@ function byRun(records: readonly AudrRecord[]): Map<string, AudrRecord[]> {
   return runs;
 }
 
-describe('VAI-10 spawned agents join the parent run', () => {
-  it('VAI-10 a sub-agent in a tool shares the run, points at the tool span and inherits attribution', async () => {
+describe('spawned agents join the parent run', () => {
+  it('a sub-agent in a tool shares the run, points at the tool span and inherits attribution', async () => {
     const h = harness({ attributionDefaults: { environment: 'production' } });
     await generateText({
       model: model({ toolCalls: [{ id: 'outer-tc', name: 'research', input: '{"topic":"t"}' }] }),
@@ -77,7 +77,7 @@ describe('VAI-10 spawned agents join the parent run', () => {
     expect(inner.every((r) => r.run.step! < toolRecord.run.step!)).toBe(true);
   });
 
-  it('VAI-09 spans and steps are unique across the parent and its sub-agents', async () => {
+  it('spans and steps are unique across the parent and its sub-agents', async () => {
     const h = harness();
     await generateText({
       model: model({ toolCalls: [{ id: 'outer-tc', name: 'research', input: '{"topic":"t"}' }] }),
@@ -92,7 +92,7 @@ describe('VAI-10 spawned agents join the parent run', () => {
     expect(records.map((r) => r.run.step).sort((a, b) => a! - b!)).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 
-  it('VAI-10 parallel tools each point their sub-agent at their own span', async () => {
+  it('parallel tools each point their sub-agent at their own span', async () => {
     const h = harness();
     const spawn = tool({
       inputSchema: z.object({ n: z.string() }),
@@ -125,7 +125,7 @@ describe('VAI-10 spawned agents join the parent run', () => {
     expect(records.every((r) => r.run.run_id === runId)).toBe(true);
   });
 
-  it('VAI-10 executeTool is transparent to the value a tool resolves', async () => {
+  it('executeTool is transparent to the value a tool resolves', async () => {
     const h = harness();
     const value = { nested: [1, 2, 3] };
     const result = await generateText({
@@ -140,7 +140,7 @@ describe('VAI-10 spawned agents join the parent run', () => {
     expect(result.toolResults[0]!.output).toBe(value);
   });
 
-  it('VAI-10 executeTool is transparent to the error a tool rejects with', async () => {
+  it('executeTool is transparent to the error a tool rejects with', async () => {
     const h = harness();
     const error = new TypeError('boom');
     const result = await generateText({
@@ -159,7 +159,7 @@ describe('VAI-10 spawned agents join the parent run', () => {
     expect(part?.type === 'tool-error' ? part.error : undefined).toBe(error);
   });
 
-  it('VAI-10 a call metered by another integration does not join the run', async () => {
+  it('a call metered by another integration does not join the run', async () => {
     const outer = harness({ attributionDefaults: { environment: 'production', account_id: 'A' } });
     const inner = harness({ attributionDefaults: { environment: 'staging', account_id: 'B' } });
     const spawn = tool({
@@ -187,7 +187,7 @@ describe('VAI-10 spawned agents join the parent run', () => {
     expect(innerRecords[0]!.run.run_id).not.toBe(outerRecords[0]!.run.run_id);
   });
 
-  it('VAI-10 a sub-agent under a reused tool call id points at its own execution', async () => {
+  it('a sub-agent under a reused tool call id points at its own execution', async () => {
     const h = harness();
     let calls = 0;
     const spawnTwice = new MockLanguageModelV4({
@@ -234,7 +234,7 @@ describe('VAI-10 spawned agents join the parent run', () => {
     expect(parents).toEqual(toolSpans);
   });
 
-  it('VAI-10 a call inside a tool of an unmetered call resolves its own attribution', async () => {
+  it('a call inside a tool of an unmetered call resolves its own attribution', async () => {
     const h = harness({ attributionDefaults: {} });
     const spawn = tool({
       inputSchema: z.object({}),

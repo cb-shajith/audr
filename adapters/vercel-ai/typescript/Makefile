@@ -1,9 +1,6 @@
 .PHONY: install lint format typecheck test build examples isolation verify clean
 NPM ?= npm
-# `@openaudr/audr` is a `file:` dependency on the core package until it is published, and
-# the core's `exports` point at its `dist/`, so the core is installed and built first.
 install:
-	$(MAKE) -C ../../core/typescript install build
 	$(NPM) ci
 lint:
 	$(NPM) run lint

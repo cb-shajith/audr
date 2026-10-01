@@ -6,34 +6,32 @@ export type DiagnosticCode =
   | 'MAP_RESOURCE_FAILED'
   | 'PROVIDER_UNMAPPED'
   | 'OPERATION_UNSUPPORTED'
-  | 'OPERATION_EVICTED'
   | 'RECORD_NOT_QUEUED'
   | 'HOOK_FAILED';
 
 /**
  * The only keys a diagnostic may carry. Their values are AI SDK operation ids, hook names,
- * error class names, counts, submit outcomes and `<code>@<json-pointer>` issues, never a
- * record value or an error message.
+ * error class names, submit outcomes and `<code>@<json-pointer>` issues, never a record
+ * value or an error message.
  */
 export interface DiagnosticFields {
   /** Always the AI SDK `operationId`, e.g. `ai.generateText`. */
   readonly operation?: string | undefined;
   readonly hook?: string | undefined;
   readonly error?: string | undefined;
-  readonly count?: number | undefined;
   readonly outcome?: string | undefined;
   readonly issues?: string | undefined;
 }
 
 const PREFIX = '@openaudr/adapter-vercel-ai';
-const FIELD_ORDER = ['hook', 'outcome', 'operation', 'issues', 'count', 'error'] as const;
+const FIELD_ORDER = ['hook', 'outcome', 'operation', 'issues', 'error'] as const;
 
 /** `@openaudr/adapter-vercel-ai: <CODE> (<key>=<value>, ...)`. */
 export function formatDiagnostic(code: DiagnosticCode, fields: DiagnosticFields): string {
   const parts: string[] = [];
   for (const key of FIELD_ORDER) {
     const value = fields[key];
-    if (value !== undefined) parts.push(`${key}=${String(value)}`);
+    if (value !== undefined) parts.push(`${key}=${value}`);
   }
   return parts.length === 0 ? `${PREFIX}: ${code}` : `${PREFIX}: ${code} (${parts.join(', ')})`;
 }
@@ -62,6 +60,16 @@ export function formatIssues(result: SubmitResult): string | undefined {
   if (result.issues.length === 0) return undefined;
   return result.issues.map((found) => `${found.code}@${found.path}`).join(',');
 }
+
+/** The default logger: diagnostics are discarded. */
+export const SILENT: Logger = {
+  warn() {
+    // Discarded: the adapter logs nothing unless the host supplies a logger.
+  },
+  error() {
+    // Discarded: the adapter logs nothing unless the host supplies a logger.
+  },
+};
 
 /** Writes value-free diagnostics to the host's logger, ignoring any error the logger throws. */
 export class Diagnostics {

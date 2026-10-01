@@ -20,10 +20,9 @@ npm install @openaudr/audr @openaudr/adapter-vercel-ai ai
 ```
 
 Requires Node.js 22.12 or later and `ai` 7.0.98 or later within 7.x, the first release
-that passes `runtimeContext` to embedding and rerank calls. `ai` is an optional peer
-dependency: the
-adapter imports only its types, so installing the adapter never pulls the AI SDK into a
-process that does not already use it.
+that passes `runtimeContext` to embedding and rerank calls. `ai` and `@openaudr/audr` are
+peer dependencies: the adapter uses the application's own copies and imports only types
+from `ai`.
 
 ## Activate and shut down
 
@@ -241,23 +240,21 @@ than falling back to the default slug.
 
 ## Operational bounds
 
-- `maxTrackedOperations` (default 10000) bounds the operations tracked at once, each
-  sub-agent call counting as one. Past the bound the operation with no event for the
-  longest time is evicted with an `OPERATION_EVICTED` warning, and its later events
-  produce no records. A sub-agent's events keep the operations that spawned it in use, so
-  an abandoned stream is evicted before a live agent waiting on a tool.
-  Everything else the adapter holds, such as embed and rerank start times, belongs to an
-  operation and is released with it.
+- The adapter holds a small state for each operation, sub-agent calls included, from
+  `onStart` until the AI SDK reports its end, abort or error, and releases it then.
+  Everything else it holds, such as embed and rerank start times, belongs to an operation
+  and is released with it. An operation the AI SDK never ends, such as a stream that is
+  abandoned without being read to the end or aborted, is held until the process exits.
 - Hooks never throw into the AI SDK. An exception inside one is logged as `HOOK_FAILED`
   with the hook name and the error class. A record the client does not queue is logged as
   `RECORD_NOT_QUEUED` with the outcome, the operation and each issue as `<code>@<path>`.
-- Diagnostics go to `logger` (default `console`) as
-  `@openaudr/adapter-vercel-ai: <CODE> (<key>=<value>, ...)` and carry AI SDK operation ids
-  (`operation=ai.generateText`), hook names, error class names, counts and issue paths,
-  never a record value or an error message. `DiagnosticCode` lists every code.
-- `audrTelemetry` throws `ConfigurationError` when `client` has no `record()`,
-  `maxTrackedOperations` is not an integer of at least 1, `attributionDefaults` is not an
-  object or `mapResource` is not a function. Nothing else in the package throws.
+- The adapter logs nothing unless given a `logger`. Pass `console` or any logger with
+  `warn` and `error` to receive diagnostics as
+  `@openaudr/adapter-vercel-ai: <CODE> (<key>=<value>, ...)`. They carry AI SDK operation
+  ids (`operation=ai.generateText`), hook names, error class names and issue paths, never a
+  record value or an error message. `DiagnosticCode` lists every code.
+- `audrTelemetry` throws `ConfigurationError` when `client` has no `record()`. Nothing else
+  in the package throws.
 
 ## Runtime support
 

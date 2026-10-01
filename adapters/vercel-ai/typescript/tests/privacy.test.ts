@@ -1,5 +1,5 @@
 /**
- * VAI-12: a sentinel placed in every payload the SDK hands the integration must reach no
+ * A sentinel placed in every payload the SDK hands the integration must reach no
  * record and no log line.
  */
 import {
@@ -80,8 +80,8 @@ function leakyModel(): MockLanguageModelV4 {
   });
 }
 
-describe('VAI-12 no payloads, no values in diagnostics', () => {
-  it('VAI-12 sentinel in every payload position reaches no record and no log line', async () => {
+describe('no payloads, no values in diagnostics', () => {
+  it('sentinel in every payload position reaches no record and no log line', async () => {
     const h = harness({ attributionDefaults: { environment: 'test' } });
     const telemetry = {
       integrations: [h.telemetry],

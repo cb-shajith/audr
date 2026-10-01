@@ -53,18 +53,13 @@
     "prepack": "npm run build"
   },
   "peerDependencies": {
-    "@openaudr/audr": ">=0.1.0 <0.2.0",
+    "@openaudr/audr": "^0.1.0",
     "ai": "^7.0.98"
-  },
-  "peerDependenciesMeta": {
-    "ai": {
-      "optional": true
-    }
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.5",
     "@eslint/js": "^10.0.1",
-    "@openaudr/audr": "file:../../core/typescript",
+    "@openaudr/audr": "^0.1.0",
     "@types/node": "^22.19.0",
     "@vitest/coverage-v8": "^5.0.0",
     "ai": "7.0.98",

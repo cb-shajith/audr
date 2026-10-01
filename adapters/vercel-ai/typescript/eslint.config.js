@@ -40,8 +40,8 @@ export default defineConfig(
     },
   },
   {
-    // The package runs wherever the AI SDK does. `ai` is an optional peer dependency, so
-    // only its types may be imported; the one Node API used is `AsyncLocalStorage`.
+    // The package runs wherever the AI SDK does. Only types may be imported from `ai`; the
+    // one Node API used is `AsyncLocalStorage`.
     files: ['src/**/*.ts'],
     rules: {
       '@typescript-eslint/no-restricted-imports': [

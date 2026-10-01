@@ -8,8 +8,6 @@ interface CallInfo {
   readonly callId: string;
   /** The call's own `callId` for a root; the root's `runId` for a child. */
   readonly runId: string;
-  /** The call whose tool started this one; `undefined` for a root. */
-  readonly parent: TrackedCall | undefined;
   /** The only operation name diagnostics carry. */
   readonly operationId: string;
   /** The tool span that started this call; set on every record of a child. */
@@ -53,52 +51,6 @@ interface ActiveToolSpan {
  */
 const activeToolSpans = new AsyncLocalStorage<readonly ActiveToolSpan[]>();
 
-/**
- * A map holding at most `limit` entries in least-recently-used order. Adding past the limit
- * evicts the entries used longest ago first; `set`, `get` and `touch` count as use.
- */
-export class LruMap<V> {
-  readonly #entries = new Map<string, V>();
-  readonly #limit: number;
-
-  constructor(limit: number) {
-    this.#limit = limit;
-  }
-
-  get size(): number {
-    return this.#entries.size;
-  }
-
-  /** Returns how many entries were evicted to make room. */
-  set(key: string, value: V): number {
-    this.#entries.delete(key);
-    this.#entries.set(key, value);
-    let evicted = 0;
-    for (const oldest of this.#entries.keys()) {
-      if (this.#entries.size <= this.#limit) break;
-      this.#entries.delete(oldest);
-      evicted += 1;
-    }
-    return evicted;
-  }
-
-  get(key: string): V | undefined {
-    this.touch(key);
-    return this.#entries.get(key);
-  }
-
-  touch(key: string): void {
-    const value = this.#entries.get(key);
-    if (value === undefined) return;
-    this.#entries.delete(key);
-    this.#entries.set(key, value);
-  }
-
-  delete(key: string): void {
-    this.#entries.delete(key);
-  }
-}
-
 export interface RootCall {
   readonly callId: string;
   readonly operationId: string;
@@ -108,22 +60,16 @@ export interface RootCall {
 }
 
 /**
- * Tracks calls by `callId` from `onStart` until `onEnd`, `onAbort` or `onError`. A later
- * event for an evicted call finds nothing and is dropped; it is never re-attributed.
+ * Tracks calls by `callId` from `onStart` until `onEnd`, `onAbort` or `onError`. An event
+ * for a call that is not tracked finds nothing and is dropped; it is never re-attributed.
  */
 export class CallTracker {
-  readonly #calls: LruMap<TrackedCall>;
+  readonly #calls = new Map<string, TrackedCall>();
 
-  constructor(limit: number) {
-    this.#calls = new LruMap(limit);
-  }
-
-  /** Returns how many calls were evicted to make room. */
-  startRoot(root: RootCall): number {
-    return this.#add({
+  startRoot(root: RootCall): void {
+    this.#add({
       ...root,
       runId: root.callId,
-      parent: undefined,
       parentSpanId: undefined,
       steps: { next: 0 },
     });
@@ -131,16 +77,14 @@ export class CallTracker {
 
   /**
    * Start a call made inside `span`: it joins the parent's run and inherits its attribution,
-   * run type, name and step sequence. Returns how many calls were evicted to make room.
+   * run type, name and step sequence.
    */
-  startChild(callId: string, operationId: string, span: ToolSpan): number {
+  startChild(callId: string, operationId: string, span: ToolSpan): void {
     const parent = span.call;
-    this.#keepAncestorsAlive(parent);
-    return this.#add({
+    this.#add({
       callId,
       operationId,
       runId: parent.runId,
-      parent,
       parentSpanId: span.spanId,
       attribution: parent.attribution,
       runType: parent.runType,
@@ -149,14 +93,8 @@ export class CallTracker {
     });
   }
 
-  /**
-   * The call for `callId`, marked as in use together with its ancestors: a parent waiting in
-   * a tool on its child is still live.
-   */
   get(callId: string): TrackedCall | undefined {
-    const call = this.#calls.get(callId);
-    this.#keepAncestorsAlive(call?.parent);
-    return call;
+    return this.#calls.get(callId);
   }
 
   end(callId: string): void {
@@ -177,8 +115,8 @@ export class CallTracker {
     return activeToolSpans.run([...active, { tracker: this, span }], execute);
   }
 
-  #add(info: CallInfo): number {
-    return this.#calls.set(info.callId, {
+  #add(info: CallInfo): void {
+    this.#calls.set(info.callId, {
       ...info,
       modelCalls: 0,
       rerankCalls: 0,
@@ -187,12 +125,6 @@ export class CallTracker {
       embedStartTimes: new Map(),
       rerankStartedAt: undefined,
     });
-  }
-
-  #keepAncestorsAlive(call: TrackedCall | undefined): void {
-    for (let current = call; current !== undefined; current = current.parent) {
-      this.#calls.touch(current.callId);
-    }
   }
 }
 

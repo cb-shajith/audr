@@ -23,7 +23,7 @@ function emitted(file: string): string {
   }).outputText;
 }
 
-it('VAI-01 pins the root exports', () => {
+it('pins the root exports', () => {
   expect(Object.keys(root).sort()).toEqual(['TOOL_ERROR_CODE', 'VERSION', 'audrTelemetry']);
   expect(root.TOOL_ERROR_CODE).toBe('VERCEL_AI_TOOL_ERROR');
 });
@@ -35,7 +35,7 @@ it('keeps VERSION equal to the package version', () => {
   expect(root.VERSION).toBe(pkg.version);
 });
 
-it('VAI-01 emits no runtime import of ai, and node: only from runs.ts', () => {
+it('emits no runtime import of ai, and node: only from runs.ts', () => {
   const files = readdirSync(SRC).filter((file) => file.endsWith('.ts'));
   expect(files.length).toBeGreaterThan(0);
   for (const file of files) {
@@ -46,7 +46,7 @@ it('VAI-01 emits no runtime import of ai, and node: only from runs.ts', () => {
   }
 });
 
-it('VAI-01 the returned integration implements the Telemetry hooks it needs', () => {
+it('the returned integration implements the Telemetry hooks it needs', () => {
   const integration = root.audrTelemetry({
     client: { record: () => ({ outcome: 'queued', queued: true, issues: [] }) } as never,
   });
