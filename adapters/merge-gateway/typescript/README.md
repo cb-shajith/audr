@@ -1,7 +1,7 @@
-# @openaudr/adapter-merge-gateway
+# @openaudr/audr-adapter-merge-gateway
 
-[![npm](https://img.shields.io/npm/v/@openaudr/adapter-merge-gateway?include_prereleases)](https://www.npmjs.com/package/@openaudr/adapter-merge-gateway)
-[![Node versions](https://img.shields.io/node/v/@openaudr/adapter-merge-gateway)](https://www.npmjs.com/package/@openaudr/adapter-merge-gateway)
+[![npm](https://img.shields.io/npm/v/@openaudr/audr-adapter-merge-gateway?include_prereleases)](https://www.npmjs.com/package/@openaudr/audr-adapter-merge-gateway)
+[![Node versions](https://img.shields.io/node/v/@openaudr/audr-adapter-merge-gateway)](https://www.npmjs.com/package/@openaudr/audr-adapter-merge-gateway)
 
 > **Status: experimental.** Its public names may change in minor releases until it
 > graduates.
@@ -17,7 +17,7 @@ and shutdown.
 ## Install
 
 ```bash
-npm install @openaudr/audr @openaudr/adapter-merge-gateway merge-gateway-sdk
+npm install @openaudr/audr @openaudr/audr-adapter-merge-gateway merge-gateway-sdk
 ```
 
 Requires Node.js 22.12 or later and `merge-gateway-sdk` 0.4.x. Both
@@ -30,7 +30,7 @@ Wrap your `MergeGateway` once at startup and use the returned facade wherever yo
 the client:
 
 ```ts
-import { instrumentMergeGateway } from '@openaudr/adapter-merge-gateway';
+import { instrumentMergeGateway } from '@openaudr/audr-adapter-merge-gateway';
 import { Client } from '@openaudr/audr';
 import { FileSink } from '@openaudr/audr/file';
 import { MergeGateway } from 'merge-gateway-sdk';
@@ -81,7 +81,7 @@ instrumented client starts inside the scope, including in promises the scope cre
 carries it:
 
 ```ts
-import { withAudr } from '@openaudr/adapter-merge-gateway';
+import { withAudr } from '@openaudr/audr-adapter-merge-gateway';
 
 const answer = await withAudr(
   {
@@ -155,7 +155,7 @@ cheap, and because scopes apply to every instrumented client, the per-run client
 by the scope it runs in:
 
 ```ts
-import { instrumentMergeGateway, withAudr } from '@openaudr/adapter-merge-gateway';
+import { instrumentMergeGateway, withAudr } from '@openaudr/audr-adapter-merge-gateway';
 import { uuidv7 } from '@openaudr/audr';
 import { MergeGateway } from 'merge-gateway-sdk';
 
@@ -257,7 +257,7 @@ stream, so read streams to their terminal frame when every call must be metered.
   requested `image` or `audio` output uses that modality, and a request for more than one
   supported modality uses `multimodal`.
 - **Emitter.** `emitter.component` is `router`, `emitter.name` is
-  `@openaudr/adapter-merge-gateway` and `emitter.version` is this package's version, because
+  `@openaudr/audr-adapter-merge-gateway` and `emitter.version` is this package's version, because
   every counter and the cost are Gateway's own.
 - **Identifiers.** Outside a run scope, `run.run_id` is the Merge response `id` and
   `run.run_type` is `single_call`; a response id outside 8 to 64 characters, and every
@@ -327,7 +327,7 @@ default; a call with no model name, reported or mapped, skips it with `MODEL_UNR
 - `instrumentMergeGateway` throws `ConfigurationError` when `client` has no `record()` or
   when the gateway is already a facade. The adapter raises no other error of its own.
 - Diagnostics go to `logger` as
-  `@openaudr/adapter-merge-gateway: <CODE> (<key>=<value>, ...)` and never carry a record
+  `@openaudr/audr-adapter-merge-gateway: <CODE> (<key>=<value>, ...)` and never carry a record
   value, an id, a model name, a mutable error name or an error message. `DiagnosticCode`
   lists every code. The default is silent; pass `console` to receive diagnostics:
 

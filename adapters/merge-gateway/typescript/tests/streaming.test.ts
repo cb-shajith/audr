@@ -6,7 +6,7 @@ import { drain, harness, response, RESPONSE_LLM, streamFrames } from './helpers.
 const PARAMS = { model: 'openai/gpt-5.4', input: 'hi', stream: true } as const;
 
 function incomplete(reason: string): string {
-  return `@openaudr/adapter-merge-gateway: STREAM_INCOMPLETE (operation=responses.create, reason=${reason})`;
+  return `@openaudr/audr-adapter-merge-gateway: STREAM_INCOMPLETE (operation=responses.create, reason=${reason})`;
 }
 
 describe('streamed responses', () => {

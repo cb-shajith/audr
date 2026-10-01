@@ -34,8 +34,8 @@ describe('metering never breaks a native call', () => {
       3,
     );
     expect(logger.errors).toEqual([
-      '@openaudr/adapter-merge-gateway: HOOK_FAILED (operation=responses.create, error=TypeError)',
-      '@openaudr/adapter-merge-gateway: HOOK_FAILED (operation=responses.create, error=TypeError)',
+      '@openaudr/audr-adapter-merge-gateway: HOOK_FAILED (operation=responses.create, error=TypeError)',
+      '@openaudr/audr-adapter-merge-gateway: HOOK_FAILED (operation=responses.create, error=TypeError)',
     ]);
   });
 
@@ -52,7 +52,7 @@ describe('metering never breaks a native call', () => {
     fake.json(response());
     await expect(gateway.responses.create(PARAMS)).resolves.toBeDefined();
     expect(logger.errors).toEqual([
-      '@openaudr/adapter-merge-gateway: HOOK_FAILED (operation=responses.create, error=Error)',
+      '@openaudr/audr-adapter-merge-gateway: HOOK_FAILED (operation=responses.create, error=Error)',
     ]);
     expect(logger.errors.join()).not.toContain('SENTINEL_PRIVATE_VALUE');
   });
@@ -130,8 +130,8 @@ describe('metering never breaks a native call', () => {
     ).toBe('not a response');
     expect(record).not.toHaveBeenCalled();
     expect(logger.lines).toEqual([
-      '@openaudr/adapter-merge-gateway: MODEL_UNREPORTED (operation=embeddings.create)',
-      '@openaudr/adapter-merge-gateway: HOOK_FAILED (operation=responses.create, error=TypeError)',
+      '@openaudr/audr-adapter-merge-gateway: MODEL_UNREPORTED (operation=embeddings.create)',
+      '@openaudr/audr-adapter-merge-gateway: HOOK_FAILED (operation=responses.create, error=TypeError)',
     ]);
   });
 
@@ -159,7 +159,7 @@ describe('metering never breaks a native call', () => {
     await expect(gateway.responses.create(PARAMS)).resolves.toBe(result);
     expect(record).not.toHaveBeenCalled();
     expect(logger.errors).toEqual([
-      '@openaudr/adapter-merge-gateway: HOOK_FAILED (operation=responses.create, error=TypeError)',
+      '@openaudr/audr-adapter-merge-gateway: HOOK_FAILED (operation=responses.create, error=TypeError)',
     ]);
   });
 
@@ -189,7 +189,7 @@ describe('metering never breaks a native call', () => {
     expect(await drain(returned as AsyncIterable<unknown>)).toHaveLength(1);
     expect(record).not.toHaveBeenCalled();
     expect(logger.errors).toEqual([
-      '@openaudr/adapter-merge-gateway: HOOK_FAILED (operation=responses.create, error=RangeError)',
+      '@openaudr/audr-adapter-merge-gateway: HOOK_FAILED (operation=responses.create, error=RangeError)',
     ]);
   });
 
@@ -252,7 +252,7 @@ describe('rejected records are reported without values', () => {
     expect(await h.records()).toEqual([]);
     expect(h.logger.warnings).toHaveLength(1);
     expect(h.logger.warnings[0]).toMatch(
-      /^@openaudr\/adapter-merge-gateway: RECORD_NOT_QUEUED \(outcome=rejected_invalid, operation=responses\.create, issues=[^\s()]+@\/attribution[^\s()]*\)$/,
+      /^@openaudr\/audr-adapter-merge-gateway: RECORD_NOT_QUEUED \(outcome=rejected_invalid, operation=responses\.create, issues=[^\s()]+@\/attribution[^\s()]*\)$/,
     );
   });
 });

@@ -1,10 +1,10 @@
 {
-  "name": "@openaudr/adapter-merge-gateway",
+  "name": "@openaudr/audr-adapter-merge-gateway",
   "version": "0.1.0",
   "description": "Meter Merge Gateway responses and embeddings as AUDR (Agent Usage Detail Record) v1.0.0 records.",
   "license": "Apache-2.0",
   "author": "The AUDR contributors",
-  "homepage": "https://openaudr.dev",
+  "homepage": "https://github.com/openaudr/audr/tree/main/adapters/merge-gateway/typescript#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/openaudr/audr.git",

@@ -9,7 +9,7 @@ covers changes to the package itself. The agreed hook and record shape are in
 
 ## What this is
 
-`adapters/merge-gateway/typescript` is the `@openaudr/adapter-merge-gateway` npm package: a
+`adapters/merge-gateway/typescript` is the `@openaudr/audr-adapter-merge-gateway` npm package: a
 non-mutating facade over a `merge-gateway-sdk` `MergeGateway` that turns every
 `responses.create()` (streaming or not) and `embeddings.create()` into an attributed AUDR
 record for an `@openaudr/audr` `Client` the host application owns, plus `withAudr()`, which

@@ -9,7 +9,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { instrumentMergeGateway, withAudr } from '@openaudr/adapter-merge-gateway';
+import { instrumentMergeGateway, withAudr } from '@openaudr/audr-adapter-merge-gateway';
 import { Client } from '@openaudr/audr';
 import { FileSink } from '@openaudr/audr/file';
 import { MergeGateway } from 'merge-gateway-sdk';

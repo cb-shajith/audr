@@ -41,7 +41,7 @@ describe('resource provider and name', () => {
     await h.gateway.responses.create(PARAMS);
     expect(await h.records()).toEqual([]);
     expect(h.logger.errors).toEqual([
-      '@openaudr/adapter-merge-gateway: HOOK_FAILED (operation=responses.create, error=SyntaxError)',
+      '@openaudr/audr-adapter-merge-gateway: HOOK_FAILED (operation=responses.create, error=SyntaxError)',
     ]);
   });
 
@@ -61,8 +61,8 @@ describe('resource provider and name', () => {
     await h.gateway.embeddings.create({ model: 'openai/text-embedding-3-small', input: 'a' });
     expect(await h.records()).toEqual([]);
     expect(h.logger.warnings).toEqual([
-      '@openaudr/adapter-merge-gateway: MODEL_UNREPORTED (operation=responses.create)',
-      '@openaudr/adapter-merge-gateway: MODEL_UNREPORTED (operation=embeddings.create)',
+      '@openaudr/audr-adapter-merge-gateway: MODEL_UNREPORTED (operation=responses.create)',
+      '@openaudr/audr-adapter-merge-gateway: MODEL_UNREPORTED (operation=embeddings.create)',
     ]);
   });
 

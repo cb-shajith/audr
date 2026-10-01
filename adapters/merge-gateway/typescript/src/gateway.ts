@@ -32,7 +32,7 @@ import { VERSION } from './version.js';
 
 const EMITTER: Emitter = {
   component: 'router',
-  name: '@openaudr/adapter-merge-gateway',
+  name: '@openaudr/audr-adapter-merge-gateway',
   version: VERSION,
 };
 

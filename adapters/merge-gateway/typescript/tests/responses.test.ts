@@ -15,7 +15,11 @@ describe('generation record per response', () => {
     expect(rest).toEqual([]);
     expect(validate(record)).toEqual([]);
     expect(record).toMatchObject({
-      emitter: { component: 'router', name: '@openaudr/adapter-merge-gateway', version: VERSION },
+      emitter: {
+        component: 'router',
+        name: '@openaudr/audr-adapter-merge-gateway',
+        version: VERSION,
+      },
       resource: {
         provider: 'merge-gateway',
         type: 'model',

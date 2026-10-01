@@ -123,7 +123,7 @@ describe('attribution resolution', () => {
     );
     expect(await h.records()).toHaveLength(1);
     expect(h.logger.warnings).toEqual([
-      '@openaudr/adapter-merge-gateway: ATTRIBUTION_UNRESOLVED (operation=responses.create)',
+      '@openaudr/audr-adapter-merge-gateway: ATTRIBUTION_UNRESOLVED (operation=responses.create)',
     ]);
   });
 

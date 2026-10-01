@@ -5,7 +5,7 @@
  *
  *   node examples/streaming.ts
  */
-import { instrumentMergeGateway } from '@openaudr/adapter-merge-gateway';
+import { instrumentMergeGateway } from '@openaudr/audr-adapter-merge-gateway';
 import { Client } from '@openaudr/audr';
 import { MemorySink } from '@openaudr/audr/testing';
 import { MergeGateway } from 'merge-gateway-sdk';

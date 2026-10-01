@@ -25,11 +25,11 @@ export interface DiagnosticFields {
   readonly error?: string | undefined;
 }
 
-const PREFIX = '@openaudr/adapter-merge-gateway';
+const PREFIX = '@openaudr/audr-adapter-merge-gateway';
 const FIELD_ORDER = ['outcome', 'operation', 'reason', 'issues', 'error'] as const;
 const ERROR_TYPES = [TypeError, RangeError, SyntaxError, ReferenceError] as const;
 
-/** `@openaudr/adapter-merge-gateway: <CODE> (<key>=<value>, ...)`. */
+/** `@openaudr/audr-adapter-merge-gateway: <CODE> (<key>=<value>, ...)`. */
 export function formatDiagnostic(code: DiagnosticCode, fields: DiagnosticFields): string {
   const parts: string[] = [];
   for (const key of FIELD_ORDER) {

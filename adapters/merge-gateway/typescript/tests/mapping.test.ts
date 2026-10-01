@@ -93,7 +93,7 @@ describe('diagnostics', () => {
         outcome: 'rejected_invalid',
       }),
     ).toBe(
-      '@openaudr/adapter-merge-gateway: RECORD_NOT_QUEUED (outcome=rejected_invalid, operation=responses.create, issues=INVALID_TYPE@/run/run_id)',
+      '@openaudr/audr-adapter-merge-gateway: RECORD_NOT_QUEUED (outcome=rejected_invalid, operation=responses.create, issues=INVALID_TYPE@/run/run_id)',
     );
   });
 

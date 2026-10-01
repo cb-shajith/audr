@@ -6,7 +6,7 @@
  *
  *   node examples/tracing.ts
  */
-import { instrumentMergeGateway, withAudr } from '@openaudr/adapter-merge-gateway';
+import { instrumentMergeGateway, withAudr } from '@openaudr/audr-adapter-merge-gateway';
 import { Client, uuidv7 } from '@openaudr/audr';
 import { MemorySink } from '@openaudr/audr/testing';
 import { MergeGateway } from 'merge-gateway-sdk';
