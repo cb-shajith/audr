@@ -175,7 +175,7 @@ describe('warnings', () => {
     const h = harness({ attributionDefaults: { environment: 'production' } });
     await h.exporter.exportTracingEvent(ended(modelSpan()));
     expect(h.logger.warnings).toEqual([
-      '@openaudr/adapter-mastra: RECORD_NOT_QUEUED (outcome=rejected_invalid, issues=REQUIRED@/attribution/account_id)',
+      '@openaudr/audr-adapter-mastra: RECORD_NOT_QUEUED (outcome=rejected_invalid, issues=REQUIRED@/attribution/account_id)',
     ]);
   });
 });

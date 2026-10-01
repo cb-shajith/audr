@@ -1,7 +1,7 @@
-# @openaudr/adapter-mastra
+# @openaudr/audr-adapter-mastra
 
-[![npm](https://img.shields.io/npm/v/@openaudr/adapter-mastra?include_prereleases)](https://www.npmjs.com/package/@openaudr/adapter-mastra)
-[![Node versions](https://img.shields.io/node/v/@openaudr/adapter-mastra)](https://www.npmjs.com/package/@openaudr/adapter-mastra)
+[![npm](https://img.shields.io/npm/v/@openaudr/audr-adapter-mastra?include_prereleases)](https://www.npmjs.com/package/@openaudr/audr-adapter-mastra)
+[![Node versions](https://img.shields.io/node/v/@openaudr/audr-adapter-mastra)](https://www.npmjs.com/package/@openaudr/audr-adapter-mastra)
 
 > **Status: experimental.** Its public names may change in minor releases until it
 > graduates.
@@ -16,7 +16,7 @@ and its sink, including construction and shutdown.
 ## Install
 
 ```bash
-npm install @openaudr/audr @openaudr/adapter-mastra @mastra/observability
+npm install @openaudr/audr @openaudr/audr-adapter-mastra @mastra/observability
 ```
 
 Requires Node.js 22.12 or later. `@mastra/core`, `@mastra/observability` and `@openaudr/audr`
@@ -35,7 +35,7 @@ import { Agent } from '@mastra/core/agent';
 import { Mastra } from '@mastra/core/mastra';
 import { Observability } from '@mastra/observability';
 import { Client } from '@openaudr/audr';
-import { AudrExporter } from '@openaudr/adapter-mastra';
+import { AudrExporter } from '@openaudr/audr-adapter-mastra';
 import { FileSink } from '@openaudr/audr/file';
 
 const client = new Client(new FileSink('audr.jsonl'), {
@@ -196,7 +196,7 @@ Prompts, completions, tool arguments, tool results and error messages are never 
   issue as `<code>@<path>`.
 - The adapter logs nothing unless given a `logger`. Pass `console` or any logger with `warn`
   and `error` to receive diagnostics as
-  `@openaudr/adapter-mastra: <CODE> (<key>=<value>, ...)`. They carry span types,
+  `@openaudr/audr-adapter-mastra: <CODE> (<key>=<value>, ...)`. They carry span types,
   setting names, submit outcomes, issue paths and error class names, never a record value or an
   error message.
 - `AudrExporter` throws `ConfigurationError` when `client` does not implement `record()` and

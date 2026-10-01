@@ -8,7 +8,7 @@ prompts, completions, tool inputs or tool outputs.
 
 | Language | Distribution | Package guide |
 | --- | --- | --- |
-| [TypeScript](typescript/) | [![npm](https://img.shields.io/npm/v/@openaudr/adapter-mastra?include_prereleases&label=%40openaudr%2Fadapter-mastra)](https://www.npmjs.com/package/@openaudr/adapter-mastra) | [`typescript/README.md`](typescript/README.md) — install, activation and shutdown, attribution, record shape |
+| [TypeScript](typescript/) | [![npm](https://img.shields.io/npm/v/@openaudr/audr-adapter-mastra?include_prereleases&label=%40openaudr%2Faudr-adapter-mastra)](https://www.npmjs.com/package/@openaudr/audr-adapter-mastra) | [`typescript/README.md`](typescript/README.md) — install, activation and shutdown, attribution, record shape |
 
 To contribute a change, see [`typescript/AGENTS.md`](typescript/AGENTS.md). To contribute a
 new adapter, see [`../CONTRIBUTING.md`](../CONTRIBUTING.md).

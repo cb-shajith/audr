@@ -27,7 +27,7 @@
     // Node resolves that through the package's own `exports` after a build; the compiler
     // needs the mapping to check them without one.
     "paths": {
-      "@openaudr/adapter-mastra": ["./src/index.ts"]
+      "@openaudr/audr-adapter-mastra": ["./src/index.ts"]
     },
 
     "noEmit": true

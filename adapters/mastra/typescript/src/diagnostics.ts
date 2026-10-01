@@ -21,10 +21,10 @@ export interface DiagnosticFields {
   readonly issues?: string | undefined;
 }
 
-const PREFIX = '@openaudr/adapter-mastra';
+const PREFIX = '@openaudr/audr-adapter-mastra';
 const FIELD_ORDER = ['setting', 'span', 'outcome', 'issues', 'error'] as const;
 
-/** `@openaudr/adapter-mastra: <CODE> (<key>=<value>, ...)`. */
+/** `@openaudr/audr-adapter-mastra: <CODE> (<key>=<value>, ...)`. */
 export function formatDiagnostic(code: DiagnosticCode, fields: DiagnosticFields): string {
   const parts: string[] = [];
   for (const key of FIELD_ORDER) {

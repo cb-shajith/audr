@@ -8,7 +8,7 @@ covers changes to the package itself.
 
 ## What this is
 
-`adapters/mastra/typescript` is the `@openaudr/adapter-mastra` npm package: a Mastra
+`adapters/mastra/typescript` is the `@openaudr/audr-adapter-mastra` npm package: a Mastra
 `ObservabilityExporter` that turns ended `model_generation`, `tool_call` and `mcp_tool_call`
 spans into attributed AUDR records for an `@openaudr/audr` `Client` the host application
 owns.

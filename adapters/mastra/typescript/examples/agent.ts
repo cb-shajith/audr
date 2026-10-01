@@ -12,7 +12,7 @@ import { Mastra } from '@mastra/core/mastra';
 import { createTool } from '@mastra/core/tools';
 import { Observability } from '@mastra/observability';
 import { type AudrRecord, Client } from '@openaudr/audr';
-import { AudrExporter } from '@openaudr/adapter-mastra';
+import { AudrExporter } from '@openaudr/audr-adapter-mastra';
 import { FileSink } from '@openaudr/audr/file';
 import { MockLanguageModelV3 } from 'ai/test';
 import { z } from 'zod';

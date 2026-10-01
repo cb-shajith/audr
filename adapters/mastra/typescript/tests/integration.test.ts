@@ -153,7 +153,7 @@ describe('observability config', () => {
   it('warns at registration when sampling can drop metered spans', () => {
     const { logger } = stack({ sampling: { type: 'ratio', probability: 0.5 } });
     expect(logger.warnings).toContain(
-      '@openaudr/adapter-mastra: CONFIG_DROPS_SPANS (setting=sampling)',
+      '@openaudr/audr-adapter-mastra: CONFIG_DROPS_SPANS (setting=sampling)',
     );
   });
 });

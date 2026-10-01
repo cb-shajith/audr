@@ -16,13 +16,13 @@ describe('diagnostics carry no values', () => {
         outcome: 'rejected_invalid',
       }),
     ).toBe(
-      '@openaudr/adapter-mastra: RECORD_NOT_QUEUED (outcome=rejected_invalid, issues=REQUIRED@/attribution/account_id)',
+      '@openaudr/audr-adapter-mastra: RECORD_NOT_QUEUED (outcome=rejected_invalid, issues=REQUIRED@/attribution/account_id)',
     );
     expect(formatDiagnostic('EXPORT_FAILED', { error: 'TypeError' })).toBe(
-      '@openaudr/adapter-mastra: EXPORT_FAILED (error=TypeError)',
+      '@openaudr/audr-adapter-mastra: EXPORT_FAILED (error=TypeError)',
     );
     expect(formatDiagnostic('CONFIG_DROPS_SPANS', { setting: 'sampling' })).toBe(
-      '@openaudr/adapter-mastra: CONFIG_DROPS_SPANS (setting=sampling)',
+      '@openaudr/audr-adapter-mastra: CONFIG_DROPS_SPANS (setting=sampling)',
     );
   });
 
