@@ -53,10 +53,26 @@ The runtime itself is an optional dependency, installed through an extra, and im
 activation rather than at import of the adapter package, so that installing the adapter
 does not pull the runtime into processes that do not use it.
 
+## TypeScript specifics
+
+`client.record()` is synchronous, never throws, and runs on the single event loop the
+runtime's callbacks already run on, so a TypeScript adapter needs no cross-thread handoff
+and no `drain()`. Each hook submits its record before it returns. The host's shutdown
+order is: stop starting runtime calls, await the ones in flight, then
+`await client.shutdown()`.
+
+The runtime and `@openaudr/audr` are peer dependencies, so the adapter uses the
+application's own copies, and the adapter imports only the runtime's types. Enforce the
+type-only rule with ESLint's `@typescript-eslint/no-restricted-imports` and
+`allowTypeImports`. Both are also development dependencies installed from npm. The
+[Vercel AI adapter](vercel-ai/typescript/AGENTS.md) implements all of this.
+
 ## What a new adapter ships
 
-Directory `adapters/<target>/<language>/`, distribution `audr-adapter-<target>`, import
-package `audr_adapter_<target>`. The package contains:
+Directory `adapters/<target>/<language>/`. A Python distribution is `audr-adapter-<target>`
+with the import package `audr_adapter_<target>`; a TypeScript package is
+`@openaudr/adapter-<target>`, in the same npm scope as the core `@openaudr/audr`. A Python
+package contains:
 
 | Path | Purpose |
 | --- | --- |
@@ -67,6 +83,16 @@ package `audr_adapter_<target>`. The package contains:
 | `README.md` | The PyPI long description: install, activate, attribute, shut down; absolute URLs only |
 | `AGENTS.md` | How to work inside this package |
 | `CHANGELOG.md`, `LICENSE`, `NOTICE` | Release history and licensing |
+
+A TypeScript package contains the same `tests/`, `README.md` (the npm page), `AGENTS.md`,
+`CHANGELOG.md`, `LICENSE` and `NOTICE`, and in place of the Python build files:
+
+| Path | Purpose |
+| --- | --- |
+| `package.json`, `package-lock.json` | Package metadata and locked environment, on the shared toolchain |
+| `Makefile` | `install`, `lint`, `test`, `build`, `examples`, `isolation`, `verify` |
+| `src/`, with `src/version.ts` | The package; `tests/public-api.test.ts` pins its exports and keeps the version equal to `package.json` |
+| `examples/` | Runnable examples on mock models, run by `make examples` |
 
 Outside the package: a workflow `.github/workflows/adapter-<target>-<language>-verify.yml`,
 a root `Makefile` target, a `CODEOWNERS` line, a row in the table in [`README.md`](README.md),
