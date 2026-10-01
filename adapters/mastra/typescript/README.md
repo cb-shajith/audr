@@ -3,32 +3,29 @@
 [![npm](https://img.shields.io/npm/v/@openaudr/audr-adapter-mastra?include_prereleases)](https://www.npmjs.com/package/@openaudr/audr-adapter-mastra)
 [![Node versions](https://img.shields.io/node/v/@openaudr/audr-adapter-mastra)](https://www.npmjs.com/package/@openaudr/audr-adapter-mastra)
 
-> **Status: experimental.** Its public names may change in minor releases until it
-> graduates.
+The **AUDR observability exporter** for [Mastra](https://mastra.ai) turns each ended
+`model_generation` span and each `tool_call` or `mcp_tool_call` span into one
+[AUDR](https://openaudr.dev/spec/v1.0.0/) record for an `@openaudr/audr` `Client` your
+application owns. It reads usage, identifiers and timings only: never prompts,
+completions, tool inputs, tool outputs or error messages.
 
-A [Mastra](https://mastra.ai) observability exporter that turns each ended `model_generation`
-span and each `tool_call` / `mcp_tool_call` span into one
-[AUDR](https://openaudr.dev/spec/v1.0.0/) record and hands it to an `@openaudr/audr` `Client`
-your application owns. It reads usage, identifiers and timings only: never prompts,
-completions, tool inputs, tool outputs or error messages. The application owns the client
-and its sink, including construction and shutdown.
+> **Status: experimental.** Until 1.0.0, a minor release may change the public API.
 
-## Install
+## Setup
 
 ```bash
-npm install @openaudr/audr @openaudr/audr-adapter-mastra @mastra/observability
+npm install @openaudr/audr @openaudr/audr-adapter-mastra @mastra/core @mastra/observability
 ```
 
-Requires Node.js 22.12 or later. `@mastra/core`, `@mastra/observability` and `@openaudr/audr`
-are peer dependencies: the adapter uses the application's copies and imports only types from
-`@mastra/*`. The `@mastra/observability` floor is the first release that emits `span_ended`
-once per span and does not re-add Anthropic cache tokens to `inputTokens`; older releases
-can produce duplicate or inflated records.
+Requires Node.js 22.12 or later, `@mastra/core` 1.62.0 or later and `@mastra/observability`
+1.17.2 or later. That `@mastra/observability` release is the first that emits `span_ended`
+once per span and counts Anthropic cache tokens in `inputTokens` only once; earlier
+releases produce duplicate or inflated records. All three packages are peer dependencies, and the
+adapter imports only types from `@mastra/*`.
 
-## Activate and shut down
+## Usage
 
-Create a host-owned `Client`, an `AudrExporter`, and register the exporter on Mastra
-observability:
+Register the exporter in Mastra's observability configuration:
 
 ```ts
 import { Agent } from '@mastra/core/agent';
@@ -41,13 +38,14 @@ import { FileSink } from '@openaudr/audr/file';
 const client = new Client(new FileSink('audr.jsonl'), {
   emitter: { component: 'harness', name: 'my-app', version: '1.0.0' },
 });
-const exporter = new AudrExporter({
-  client,
-  attributionDefaults: { environment: 'production' },
-});
+const exporter = new AudrExporter({ client, attributionDefaults: { environment: 'production' } });
 
-const model = …; // any AI SDK language model
-const agent = new Agent({ id: 'support', name: 'Support', instructions: '…', model });
+const agent = new Agent({
+  id: 'support',
+  name: 'Support',
+  instructions: 'Help customers with orders.',
+  model: 'openai/gpt-5.4',
+});
 const mastra = new Mastra({
   agents: { agent },
   observability: new Observability({
@@ -63,26 +61,50 @@ await mastra.shutdown();
 await client.shutdown();
 ```
 
-Shut down in that order: `await mastra.shutdown()` then `await client.shutdown()`. The
-exporter's `shutdown()` does not close the client; `flush()` on the exporter delegates to
-`client.flush()`. The adapter never creates, configures or shuts down a sink.
-
-A runnable version of this, with a mock model and no network, is
+Shut down Mastra first, then the client. The exporter's `shutdown()` leaves the client
+open, and its `flush()` delegates to `client.flush()`. A runnable version with a mock model
+and a tool is
 [`examples/agent.ts`](https://github.com/openaudr/audr/blob/main/adapters/mastra/typescript/examples/agent.ts).
 
-### Observability settings
-
-Metered spans reach the exporter only when Mastra observability emits them. At registration
-the exporter warns with `CONFIG_DROPS_SPANS` when `sampling.type` is not `always` or when
-`excludeSpanTypes` lists `model_generation`, `tool_call` or `mcp_tool_call`.
+> [!IMPORTANT]
+> Metered spans reach the exporter only when Mastra observability emits them. Keep
+> `sampling.type` at `always` and leave `model_generation`, `tool_call` and `mcp_tool_call`
+> out of `excludeSpanTypes`. The exporter warns with `CONFIG_DROPS_SPANS` at registration
+> when either setting can drop them.
 
 ## Attribution
 
 Attribution is resolved per ended span from `metadata.audr` merged field by field over
-`attributionDefaults` (span metadata wins; `labels` merge by key):
+`attributionDefaults`. The span wins, and `labels` merge by key. Metadata set on the root
+span reaches every child span, so a tool call carries the attribution of the agent call that
+made it:
 
 ```ts
-await agent.generate('…', {
+import { Agent } from '@mastra/core/agent';
+import { Mastra } from '@mastra/core/mastra';
+import { Observability } from '@mastra/observability';
+import { Client } from '@openaudr/audr';
+import { AudrExporter } from '@openaudr/audr-adapter-mastra';
+import { FileSink } from '@openaudr/audr/file';
+
+const client = new Client(new FileSink('audr.jsonl'), {
+  emitter: { component: 'harness', name: 'my-app', version: '1.0.0' },
+});
+const exporter = new AudrExporter({ client, attributionDefaults: { environment: 'production' } });
+const agent = new Agent({
+  id: 'support',
+  name: 'Support',
+  instructions: 'Help customers with orders.',
+  model: 'openai/gpt-5.4',
+});
+const mastra = new Mastra({
+  agents: { agent },
+  observability: new Observability({
+    configs: { default: { serviceName: 'my-app', exporters: [exporter] } },
+  }),
+});
+
+await agent.generate('Where is order 42?', {
   tracingOptions: {
     metadata: {
       audr: {
@@ -94,124 +116,77 @@ await agent.generate('…', {
     },
   },
 });
+
+await mastra.shutdown();
+await client.shutdown();
 ```
 
-Alternatively, set attribution on the request context and list the key in the observability
-config so Mastra copies it onto span metadata:
+Attribution can also come from the request context. Listing the key in
+`requestContextKeys` makes Mastra copy it onto span metadata:
 
 ```ts
+import { Agent } from '@mastra/core/agent';
+import { Mastra } from '@mastra/core/mastra';
 import { RequestContext } from '@mastra/core/request-context';
+import { Observability } from '@mastra/observability';
+import { Client } from '@openaudr/audr';
+import { AudrExporter } from '@openaudr/audr-adapter-mastra';
+import { FileSink } from '@openaudr/audr/file';
+
+const client = new Client(new FileSink('audr.jsonl'), {
+  emitter: { component: 'harness', name: 'my-app', version: '1.0.0' },
+});
+const exporter = new AudrExporter({ client, attributionDefaults: { environment: 'production' } });
+const agent = new Agent({
+  id: 'support',
+  name: 'Support',
+  instructions: 'Help customers with orders.',
+  model: 'openai/gpt-5.4',
+});
+const mastra = new Mastra({
+  agents: { agent },
+  observability: new Observability({
+    configs: {
+      default: { serviceName: 'my-app', exporters: [exporter], requestContextKeys: ['audr'] },
+    },
+  }),
+});
 
 const requestContext = new RequestContext();
 requestContext.set('audr', { account_id: 'acct_42' });
+await agent.generate('Where is order 42?', { requestContext });
 
-const observability = new Observability({
-  configs: {
-    default: {
-      serviceName: 'my-app',
-      exporters: [exporter],
-      requestContextKeys: ['audr'],
-    },
-  },
-});
-
-await agent.generate('…', { requestContext });
+await mastra.shutdown();
+await client.shutdown();
 ```
 
-Metadata propagates from the root span to every child span. The reader keeps `environment`,
-`user_id`, `account_id` and `subscription_id` when each is a string, and `labels` when it is
-an object of strings; anything else is dropped. The `Client` validates the rest; for example a
-`production` record without `account_id` is rejected and logged. A span with no resolvable
-`environment` after the merge is skipped with an `ATTRIBUTION_UNRESOLVED` warning rather than
-billed to a guess.
+- `environment`, `user_id`, `account_id` and `subscription_id` are read when each is a
+  string, and `labels` when it is an object of strings. The `Client` validates the result.
+- A span with no `environment` after the merge is skipped with an `ATTRIBUTION_UNRESOLVED`
+  warning rather than billed to a guess. Omit it from `attributionDefaults` to require it
+  per call.
 
-## Record shape
+## Records
 
-| Mastra span (`span_ended`) | `resource.operation` | `resource.type` | `usage` |
-| --- | --- | --- | --- |
-| `model_generation` | `generation` | `model` | `llm` |
-| `tool_call`, `mcp_tool_call` | `tool_execution` | `tool` | `tool: { type: 'invocation', call_count: 1 }` |
+| Mastra span (`span_ended`) | `resource.operation` | `usage` |
+| --- | --- | --- |
+| `model_generation` | `generation` | `llm` tokens |
+| `tool_call`, `mcp_tool_call` | `tool_execution` | `tool: { type: 'invocation', call_count: 1 }` |
 
-`model_step` and `model_chunk` spans are ignored: Mastra rolls step usage into
-`model_generation`, so metering those spans would double-count.
+A generation's usage covers every step of the call, so `model_step` and `model_chunk` spans
+are not metered. Cache and reasoning tokens are counted apart from `input_tokens` and
+`output_tokens`, and a counter Mastra did not report is omitted rather than zeroed. Cost is
+never written.
 
-- **Tokens.** `input_tokens` is Mastra `inputTokens` minus cache read and write, reported as
-  `cache_read_tokens` and `cache_write_tokens`; `output_tokens` is `outputTokens` minus
-  reasoning, reported as `reasoning_tokens`. Audio and image tokens stay inside the input and
-  output totals. `requests` and `cost` are never written. A counter Mastra did not report is
-  omitted, not zeroed. A generation that ends with no usage is not recorded.
-- **Model.** `resource.name` is `responseModel` when set, otherwise `model`.
-  `resource.modality` is `text`. `resource.provider` is derived from the AI SDK provider id on
-  the span (see below).
-- **Tools.** `resource.provider` is `self-hosted` and `resource.name` is the tool name
-  (`entityName`). A failed tool sets `run.error_code` to `MASTRA_TOOL_ERROR`; the error itself
-  is never read. A failed generation that still reported usage is recorded with
-  `MASTRA_MODEL_ERROR`.
-- **Identifiers.** `run.run_id` is Mastra `traceId`, so sub-agents in the same trace share a
-  run; `run.trace_id` is the same value when it is a 32-digit W3C trace id. A caller-supplied
-  `tracingOptions.traceId` shorter than 8 characters cannot be a `run_id`, so the client
-  rejects those records. `run.span_id` is the span id; `run.parent_span_id` is set when
-  present. The `@openaudr/audr` SDK mints `record_id`, and the `Client` stamps its own
-  `emitter`.
-- **Timing.** `timing.event_time` is when the span ended. `timing.duration_ms` is the span
-  wall time when both ends are valid.
+Not metered: embedding calls, provider-executed tools, Mastra internal model calls unless
+`includeInternalSpans` is set, and spans that sampling or filters drop.
 
-### Provider slugs
+## Documentation
 
-`resource.provider` must match `^[a-z0-9-]+$`. The Mastra provider id is mapped in this order:
+- [Reference](https://github.com/openaudr/audr/blob/main/adapters/mastra/typescript/docs/reference.md): options, record fields and identifiers, provider slugs, diagnostics, operational bounds
+- [Examples](https://github.com/openaudr/audr/tree/main/adapters/mastra/typescript/examples): runnable on mock models, without network access
+- [AUDR specification](https://openaudr.dev/spec/v1.0.0/), which defines every record field
 
-1. The alias table below. Each prefix matches itself and every `<prefix>.<api>` id.
-2. The text before the first `.`, lowercased, with other characters replaced by `-`:
-   `openai.chat` → `openai`, `anthropic.messages` → `anthropic`.
+## License
 
-| AI SDK provider id | `resource.provider` |
-| --- | --- |
-| `gateway` | `vercel-ai-gateway` |
-| `azure` | `azure-openai` |
-| `amazon-bedrock`, `bedrock`, `bedrock-mantle` | `aws-bedrock` |
-| `google.vertex`, `googleVertex`, `vertex` | `google-vertex` |
-
-A generation with no valid provider slug or model name is skipped with `RESOURCE_UNRESOLVED`.
-
-## What is not metered
-
-- `model_step`, `model_chunk`, and every span type other than `model_generation`, `tool_call`
-  and `mcp_tool_call`.
-- Mastra internal model calls, whose usage Mastra rolls into `internalUsage` on an ancestor
-  span, unless observability is configured with `includeInternalSpans: true`.
-- Embedding calls (`rag_embedding` spans).
-- Provider-executed tools and client-side tools Mastra does not surface as `tool_call` /
-  `mcp_tool_call` spans.
-- Mastra's own estimated cost on spans.
-- Spans dropped by sampling, `excludeSpanTypes` or a `spanFilter`.
-- Generations that end without reported token usage.
-
-Prompts, completions, tool arguments, tool results and error messages are never read.
-
-## Operational bounds
-
-- The exporter handles `span_ended` events only. It never throws back into Mastra; an
-  exception while exporting is logged as `EXPORT_FAILED` with the error class name only.
-- A record the client does not queue is logged as `RECORD_NOT_QUEUED` with the outcome and each
-  issue as `<code>@<path>`.
-- The adapter logs nothing unless given a `logger`. Pass `console` or any logger with `warn`
-  and `error` to receive diagnostics as
-  `@openaudr/audr-adapter-mastra: <CODE> (<key>=<value>, ...)`. They carry span types,
-  setting names, submit outcomes, issue paths and error class names, never a record value or an
-  error message.
-- `AudrExporter` throws `ConfigurationError` when `client` does not implement `record()` and
-  `flush()`. Nothing else in the package throws.
-
-## Reference
-
-This adapter implements [AUDR v1.0.0](https://openaudr.dev/spec/v1.0.0/) through the
-[`@openaudr/audr`](https://www.npmjs.com/package/@openaudr/audr) SDK. The rules every adapter
-follows are in
-[`adapters/CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/adapters/CONTRIBUTING.md).
-
-## Contributing
-
-Contributions are welcome — see
-[`CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/CONTRIBUTING.md).
-
-Licensed under Apache-2.0.
+Apache-2.0. Contributions follow [`CONTRIBUTING.md`](https://github.com/openaudr/audr/blob/main/CONTRIBUTING.md).

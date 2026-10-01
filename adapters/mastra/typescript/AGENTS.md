@@ -22,7 +22,7 @@ owns.
 | `src/attribution.ts` | The `metadata.audr` reader and the merge over defaults |
 | `src/mapping.ts` | Token arithmetic, provider slugs, timing helpers, error codes |
 | `src/diagnostics.ts` | `DiagnosticCode`, the message format, `errorName`, the silent default logger |
-| `src/version.ts` | The package version re-exported as `VERSION` |
+| `docs/reference.md` | The full reference: options, record fields, provider slugs, diagnostics, bounds |
 | `tests/` | The Vitest suite |
 | `examples/` | Runnable examples on mock models; no credentials or network calls |
 
@@ -45,6 +45,9 @@ owns.
    a model name, a tool name or an error message; error class names only.
 7. Never write `requests`, `cost` or `totalTokens`. `input_tokens` excludes cache reads and
    writes; `output_tokens` excludes reasoning.
+8. A behaviour change updates its one home: `README.md` for installation, usage and
+   attribution, `docs/reference.md` for everything else. Neither repeats the other's
+   detail. A new diagnostic code gets a row in the diagnostics table of `docs/reference.md`.
 
 ## Toolchain
 
