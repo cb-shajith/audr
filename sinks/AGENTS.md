@@ -41,3 +41,8 @@ issue agrees the routing key and the de-duplication key; if none exists, stop an
    data-handling restatement with a link to `SECURITY.md`. Absolute URLs. No version
    number. Execute every code block.
 6. **Verify:** `make verify` in the package, then `make all` at the root.
+
+A TypeScript sink follows the same steps in `sinks/<target>/typescript/`, modelled on
+`chargebee/typescript/`: `audr` as a peer dependency, `assertSinkContract` from
+`audr/testing`, a workflow modelled on `sink-chargebee-typescript-verify.yml`, and a root
+`Makefile` target `sink-<target>-typescript` added to `typescript`.
