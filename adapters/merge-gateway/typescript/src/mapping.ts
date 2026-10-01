@@ -42,9 +42,10 @@ export interface GatewayUsage {
 /**
  * AUDR counters from a `/v1/responses` usage object. AUDR's `input_tokens` excludes cache
  * reads and writes and its `output_tokens` excludes reasoning, so each is reduced by the
- * counters Gateway reports alongside it. When a split counter is explicitly `null`, the
- * corresponding exclusive total cannot be derived and is omitted. An absent split did not
- * apply and is treated as zero. `total_tokens` is never copied.
+ * counters Gateway reports alongside it. When a cache counter is explicitly `null`,
+ * `input_tokens` cannot be derived and is omitted. When reasoning is `null`, no
+ * `reasoning_tokens` is written, so `output_tokens` keeps the whole completion. An absent
+ * split did not apply and is treated as zero. `total_tokens` is never copied.
  */
 export function responseUsage(usage: GatewayUsage | null | undefined): LlmUsage {
   const cacheRead = usage?.cache_read_input_tokens;
@@ -55,7 +56,7 @@ export function responseUsage(usage: GatewayUsage | null | undefined): LlmUsage 
       cacheRead === null || cacheWrite === null
         ? undefined
         : exclusive(usage?.input_tokens, (cacheRead ?? 0) + (cacheWrite ?? 0)),
-    output_tokens: reasoning === null ? undefined : exclusive(usage?.output_tokens, reasoning ?? 0),
+    output_tokens: exclusive(usage?.output_tokens, reasoning ?? 0),
     cache_read_tokens: cacheRead ?? undefined,
     cache_write_tokens: cacheWrite ?? undefined,
     reasoning_tokens: reasoning ?? undefined,

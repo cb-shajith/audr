@@ -69,7 +69,7 @@ describe('generation record per response', () => {
 });
 
 describe('token arithmetic', () => {
-  it('omits exclusive totals when Gateway cannot report their split counters', async () => {
+  it('omits input_tokens but keeps output_tokens when split counters are unreported', async () => {
     const h = harness();
     h.fake.json(
       response({
@@ -85,7 +85,7 @@ describe('token arithmetic', () => {
     );
     await h.gateway.responses.create(PARAMS);
     const [record] = await h.records();
-    expect(record!.usage.llm).toEqual({ requests: 1 });
+    expect(record!.usage.llm).toEqual({ output_tokens: 1630, requests: 1 });
     expect(record!.cost).toBeUndefined();
   });
 

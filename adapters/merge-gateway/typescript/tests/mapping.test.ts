@@ -34,16 +34,21 @@ describe('token arithmetic', () => {
     ).toMatchObject({ input_tokens: 0, output_tokens: 0 });
   });
 
-  it('omits an exclusive total when Gateway cannot report one of its parts', () => {
+  it('omits input_tokens when Gateway cannot report a cache counter', () => {
     expect(
       responseUsage({
         input_tokens: 41,
         output_tokens: 7,
         cache_read_input_tokens: 5,
         cache_creation_input_tokens: null,
-        reasoning_output_tokens: null,
       }),
-    ).toEqual({ cache_read_tokens: 5, requests: 1 });
+    ).toEqual({ output_tokens: 7, cache_read_tokens: 5, requests: 1 });
+  });
+
+  it('keeps the whole completion as output_tokens when reasoning is unreported', () => {
+    expect(
+      responseUsage({ input_tokens: 41, output_tokens: 7, reasoning_output_tokens: null }),
+    ).toEqual({ input_tokens: 41, output_tokens: 7, requests: 1 });
   });
 
   it('treats an absent split counter as unused', () => {

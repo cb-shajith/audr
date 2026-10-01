@@ -243,9 +243,10 @@ stream, so read streams to their terminal frame when every call must be metered.
   `output_tokens` includes reasoning. The adapter writes `input_tokens` without the cache
   reads and writes, reported as `cache_read_tokens` (from `cache_read_input_tokens`) and
   `cache_write_tokens` (from `cache_creation_input_tokens`), and `output_tokens` without the
-  reasoning, reported as `reasoning_tokens` (from `reasoning_output_tokens`). When a split
-  counter is `null` because Gateway cannot count it, the dependent exclusive total is
-  omitted rather than treating the unknown part as zero. A split field not present did not
+  reasoning, reported as `reasoning_tokens` (from `reasoning_output_tokens`). When a cache
+  counter is `null` because Gateway cannot count it, `input_tokens` is omitted rather than
+  treating the unknown part as zero. When reasoning is `null`, no `reasoning_tokens` is
+  written and `output_tokens` is the whole completion. A split field not present did not
   apply and is treated as zero. `total_tokens` is never copied.
 - **Cost.** Gateway's per-call `usage.cost` becomes `cost.total_cost` with `currency`
   `USD`. It is Gateway's price for the route and service tier that served the call, net of

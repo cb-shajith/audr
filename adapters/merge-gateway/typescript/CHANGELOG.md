@@ -25,8 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Preserve unknown cache-write and reasoning splits by omitting the dependent exclusive
-  token total instead of treating an explicitly `null` counter as zero.
+- Omit `input_tokens` when a cache counter is explicitly `null` instead of treating it as
+  zero, and keep the whole completion as `output_tokens` when reasoning is `null`.
 - Set `resource.modality` from the response modalities requested from Gateway, including
   image and multimodal generations.
 - Return a native result unchanged when its stream shape cannot be inspected safely.
