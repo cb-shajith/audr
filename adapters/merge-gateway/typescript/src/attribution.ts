@@ -46,7 +46,8 @@ const scopes = new AsyncLocalStorage<Scope>();
  * );
  * ```
  *
- * `withAudr` itself never throws: a context it cannot read is ignored and `body` still runs.
+ * Only an exception from `body` propagates: a context that cannot be read is ignored and
+ * `body` runs under the outer scope.
  */
 export function withAudr<T>(context: AudrContext, body: () => T): T {
   return scopes.run(nest(currentScope(), context), body);

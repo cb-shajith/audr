@@ -24,27 +24,9 @@ scopes attribution and an optional host run over every call an instrumented clie
 | `src/attribution.ts` | `withAudr`, scope nesting, the attribution merge and the one process-wide `AsyncLocalStorage` |
 | `src/mapping.ts` | `GatewayResult`, the only response fields the adapter reads, and pure functions over it: token arithmetic, cost, run id length |
 | `src/diagnostics.ts` | `DiagnosticCode`, value-free formatting and fixed error categories |
-| `tests/` | The Vitest suite, run against the real SDK with `fetch` stubbed |
+| `docs/reference.md` | The full reference: options, agent runs, Merge tracing, streams, record fields, diagnostics, bounds |
+| `tests/` | The Vitest suite, run against the real SDK with `fetch` stubbed; one file per behaviour area, named for it |
 | `examples/` | Runnable examples with `fetch` answered locally; no credentials or network calls |
-
-## Tests
-
-Tests are named for the behaviour they pin, in plain words. A behaviour change updates the
-matching test; a new behaviour gets a test in the file that owns it.
-
-| File | Covers |
-| --- | --- |
-| `facade.test.ts` | The facade keeps the native type, forwards every member and argument, sends the native request, refuses double instrumentation, and only calls `client.record()` |
-| `responses.test.ts` | One generation record per response, modalities, token counters, failed responses |
-| `streaming.test.ts` | Streams recorded at `response.done`, and every way a stream can end without one |
-| `embeddings.test.ts` | One embedding record per call |
-| `mapping.test.ts` | The pure token, cost, run id and diagnostic functions |
-| `scope.test.ts` | Attribution resolution and nesting, and scopes reaching every facade, including Merge's per-run tracing client |
-| `runs.test.ts` | Run identifiers inside and outside `withAudr` run scopes |
-| `resource.test.ts` | `resource.provider` and `resource.name`, with and without `mapResource` |
-| `privacy.test.ts` | A sentinel in every payload position reaches no record and no log line |
-| `isolation.test.ts` | Metering never breaks a native call; rejected records are reported without values |
-| `public-api.test.ts` | The root exports, the version, and the absence of runtime SDK imports |
 
 ## Rules
 
@@ -68,8 +50,8 @@ matching test; a new behaviour gets a test in the file that owns it.
    attribution fields. Scopes are process-wide: one applies to every instrumented client,
    so a per-run client created inside it is covered. Attribution and the run are resolved
    once when a native call starts and never changed afterwards. A call without a resolved
-   `environment` is not metered and logs `ATTRIBUTION_UNRESOLVED`. `withAudr` never
-   throws: a context it cannot read is ignored.
+   `environment` is not metered and logs `ATTRIBUTION_UNRESOLVED`. `withAudr` propagates
+   only what its body throws: a context it cannot read is ignored.
 5. Never change, delay or fail a native call. A native rejection propagates untouched and
    is never logged; every metering step after the call, including stream-shape inspection,
    is guarded. `instrumentMergeGateway` throws only when `client` has no `record()` or a
@@ -87,12 +69,16 @@ matching test; a new behaviour gets a test in the file that owns it.
    id, a model name, a mutable error name or an error message; fixed error categories only.
 9. `emitter` is always the adapter as a `router`. `cost` is `total_cost` in `USD` from
    `usage.cost` only, never a `cost.llm` breakdown. `input_tokens` excludes cache reads and
-   writes; `output_tokens` excludes reasoning. When Gateway reports a required split counter
-   as `null`, omit the exclusive total rather than treating the unknown part as zero.
-   `resource.modality` comes from requested `modalities`, defaulting to `text`. Never write
-   `total_tokens`, `run.outcome` (the harness owns it), `run.trace_id` (it is a W3C trace id,
-   which `X-Merge-Trace-Id` is not) or `run.step` (the adapter cannot know a call's position
-   across scopes, processes or concurrent calls).
+   writes; `output_tokens` excludes reasoning. A `null` cache counter omits `input_tokens`,
+   because the schema requires it to exclude cache reads. A `null` reasoning counter leaves
+   `output_tokens` whole, because the schema excludes reasoning only when `reasoning_tokens`
+   is present. `resource.modality` comes from requested `modalities`, defaulting to `text`.
+   Never write `total_tokens`, `run.outcome` (the harness owns it), `run.trace_id` (it is a
+   W3C trace id, which `X-Merge-Trace-Id` is not) or `run.step` (a call's position is
+   undefined across scopes, processes and concurrent calls).
+10. A behaviour change updates its one home: `README.md` for installation, usage and
+    attribution, `docs/reference.md` for everything else. Neither repeats the other's
+    detail.
 
 ## Toolchain
 
@@ -100,14 +86,12 @@ The shared toolchain is defined in the top-level
 [`CONTRIBUTING.md`](../../../CONTRIBUTING.md#shared-typescript-toolchain). Specific to this
 package:
 
-- **Peer dependencies:** `merge-gateway-sdk` and `@openaudr/audr`. The dev
-  dependency on `merge-gateway-sdk` is pinned exactly to the floor of the peer range, so
-  CI runs the suite against the oldest release the package claims to support. Raise the
-  two together. The 0.4 type declarations omit fields Gateway returns (`usage.cost`, the
-  cache and reasoning counters, `vendor`), so `GatewayResult` in `src/mapping.ts` declares
-  the documented shape.
-- **`@openaudr/audr`** is a peer dependency and a development dependency from npm, so the
-  package tests and builds against the same published SDK range applications install.
+- **Peer dependencies:** `merge-gateway-sdk` and `@openaudr/audr`, both also development
+  dependencies from npm. The dev dependency on `merge-gateway-sdk` is pinned exactly to the
+  floor of the peer range, so CI runs the suite against the oldest release the package
+  claims to support. Raise the two together. The 0.4 type declarations omit fields Gateway
+  returns (`usage.cost`, the cache and reasoning counters, `vendor`), so `GatewayResult` in
+  `src/mapping.ts` declares the documented shape.
 - **Version:** `package.json` and `src/version.ts`; `tests/public-api.test.ts` keeps them
   equal.
 

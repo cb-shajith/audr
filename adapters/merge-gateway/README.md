@@ -8,7 +8,7 @@ scopes with configurable defaults. The adapter reads no input, output, tools or 
 
 | Language | Distribution | Package guide |
 | --- | --- | --- |
-| [TypeScript](typescript/) | [![npm](https://img.shields.io/npm/v/@openaudr/audr-adapter-merge-gateway?include_prereleases&label=%40openaudr%2Faudr-adapter-merge-gateway)](https://www.npmjs.com/package/@openaudr/audr-adapter-merge-gateway) | [`typescript/README.md`](typescript/README.md) — install, activation and shutdown, attribution, Merge tracing, record shape |
+| [TypeScript](typescript/) | [![npm](https://img.shields.io/npm/v/@openaudr/audr-adapter-merge-gateway?include_prereleases&label=%40openaudr%2Faudr-adapter-merge-gateway)](https://www.npmjs.com/package/@openaudr/audr-adapter-merge-gateway) | [`typescript/README.md`](typescript/README.md) — install, usage, attribution; the full reference is [`typescript/docs/reference.md`](typescript/docs/reference.md) |
 
 To contribute a change, see [`typescript/AGENTS.md`](typescript/AGENTS.md). To contribute a
 new adapter, see [`../CONTRIBUTING.md`](../CONTRIBUTING.md).
