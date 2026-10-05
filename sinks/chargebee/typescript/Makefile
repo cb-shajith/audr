@@ -1,11 +1,10 @@
-.PHONY: install lint format typecheck test build isolation verify clean
+.PHONY: install lint format typecheck test build examples isolation verify clean
 NPM ?= npm
-CORE := ../../../adapters/core/typescript
-# The core is linked from this repository until it is published, and resolves through its
-# built `dist/`, so it is installed and built first.
+ROOT := ../../..
+# Every TypeScript package installs from the repository's root lockfile, which links the
+# local core; the root target also builds the core, which dependents resolve through `dist/`.
 install:
-	$(MAKE) -C $(CORE) install build
-	$(NPM) ci
+	$(MAKE) -C $(ROOT) typescript-install
 lint:
 	$(NPM) run lint
 	$(NPM) run typecheck
@@ -17,9 +16,11 @@ test:
 	$(NPM) test
 build:
 	$(NPM) run build
+examples: build
+	node examples/deliver.ts
 isolation: build
 	$(NPM) run check:package
-	node scripts/verify-package.ts
-verify: lint test isolation
+	node $(ROOT)/tools/verify-npm-package.mjs .
+verify: lint test examples isolation
 clean:
-	rm -rf dist coverage node_modules *.tgz
+	rm -rf dist coverage *.tgz

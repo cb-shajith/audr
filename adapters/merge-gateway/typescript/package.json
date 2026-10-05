@@ -1,0 +1,67 @@
+{
+  "name": "@openaudr/audr-adapter-merge-gateway",
+  "version": "0.1.1",
+  "description": "Meter Merge Gateway responses and embeddings as AUDR (Agent Usage Detail Record) v1.0.0 records.",
+  "license": "Apache-2.0",
+  "author": "The AUDR contributors",
+  "homepage": "https://github.com/openaudr/audr/tree/main/adapters/merge-gateway/typescript#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/openaudr/audr.git",
+    "directory": "adapters/merge-gateway/typescript"
+  },
+  "bugs": {
+    "url": "https://github.com/openaudr/audr/issues"
+  },
+  "keywords": [
+    "audr",
+    "agent",
+    "usage",
+    "metering",
+    "billing",
+    "merge",
+    "merge-gateway",
+    "llm-gateway"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\" && tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . && prettier --check .",
+    "format": "eslint --fix . && prettier --write .",
+    "test": "vitest run --coverage",
+    "check:package": "publint --strict && attw --pack . --profile esm-only",
+    "prepack": "npm run build"
+  },
+  "peerDependencies": {
+    "@openaudr/audr": "^0.1.0",
+    "merge-gateway-sdk": "^0.4.0"
+  },
+  "devDependencies": {
+    "@openaudr/audr": "^0.1.0",
+    "merge-gateway-sdk": "0.4.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}
