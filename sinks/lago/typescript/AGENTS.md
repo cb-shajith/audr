@@ -45,8 +45,9 @@ Examples must stub `fetch` and run without credentials or network access.
    was rejected locally, keeps that outcome when a later request fails; the batch is
    answered `accepted`, the records of a request that failed permanently are `rejected`
    with the failure's detail, and the records without an outcome are `unknown`
-   ([`src/tally.ts`](src/tally.ts)). Only a `200` confirms a request; another `2xx` leaves
-   its records `unknown`.
+   ([`src/tally.ts`](src/tally.ts)). The `Tally` derives `unknown` from the outcomes it
+   recorded, so an unexpected error mid-batch is reported the same way. Only a `200`
+   confirms a request; another `2xx` leaves its records `unknown`.
 7. Act on a `422` only when `parseValidationErrors` can match every named position to an
    event of the request, and bound the resends of one request. An entry that is a message
    rather than field codes refuses its event; never read the message. A change to the

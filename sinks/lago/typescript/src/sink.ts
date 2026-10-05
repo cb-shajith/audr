@@ -78,7 +78,8 @@ export class LagoSink implements Sink {
     try {
       return await this.#deliver(batch, options.signal);
     } catch (error) {
-      this.#logger.error(`audr-sink-lago: delivery failed unexpectedly (${nameOf(error)})`);
+      // Nothing was sent: only the closed check and the local encoding run outside the tally.
+      this.#reportUnexpected(error);
       return BatchResult.failed({ retryable: false, detail: 'internal_error' });
     }
   }
@@ -100,15 +101,28 @@ export class LagoSink implements Sink {
     if (this.#transport.closed) return BatchResult.closed();
 
     const { events, rejected } = preflight(batch, this.#metricCode);
-    const tally = new Tally(rejected);
-    for (let start = 0; start < events.length && !tally.stopped; start += MAX_EVENTS_PER_REQUEST) {
-      const end = start + MAX_EVENTS_PER_REQUEST;
-      const stop = await this.#deliverChunk(events.slice(start, end), tally, signal);
-      if (stop !== undefined) {
-        tally.halt(stop);
-        tally.leaveUnresolved(events.slice(end));
-        this.#reportInterruption(stop);
+    const tally = new Tally(events, rejected);
+    try {
+      for (
+        let start = 0;
+        start < events.length && !tally.stopped;
+        start += MAX_EVENTS_PER_REQUEST
+      ) {
+        const stop = await this.#deliverChunk(
+          events.slice(start, start + MAX_EVENTS_PER_REQUEST),
+          tally,
+          signal,
+        );
+        if (stop !== undefined) {
+          tally.halt(stop);
+          this.#reportInterruption(stop);
+        }
       }
+    } catch (error) {
+      // Requests may have settled already. The tally keeps their outcomes and reports the
+      // records without one as unknown, which is safe to deliver again.
+      this.#reportUnexpected(error);
+      tally.halt(failed(false, 'internal_error'));
     }
     return tally.result();
   }
@@ -124,7 +138,7 @@ export class LagoSink implements Sink {
       const exchange = await this.#exchange(pending, signal);
       switch (exchange.kind) {
         case 'accepted':
-          tally.confirm(pending.length);
+          tally.confirm(pending);
           return undefined;
         case 'invalid': {
           if (exceedsBatchLimit(exchange.body)) {
@@ -140,7 +154,6 @@ export class LagoSink implements Sink {
               `audr-sink-lago: Lago refused the request again after ${salvaged} resend(s); ` +
                 `its remaining events are unknown (events=${pending.length})`,
             );
-            tally.leaveUnresolved(pending);
             return failed(false, 'http_422');
           }
           const verdict = parseValidationErrors(exchange.body, pending.length);
@@ -158,7 +171,7 @@ export class LagoSink implements Sink {
           for (const [index, event] of pending.entries()) {
             const refusal = refusals.get(index);
             if (refusal !== undefined) tally.reject(event.transaction_id, refusal);
-            else if (duplicates.has(index)) tally.confirm(1);
+            else if (duplicates.has(index)) tally.confirm([event]);
             else survivors.push(event);
           }
           this.#logger.warn(
@@ -170,13 +183,11 @@ export class LagoSink implements Sink {
         }
         case 'failed':
           // A permanent failure is Lago's verdict on the request; a retryable one is no verdict.
-          if (exchange.retryable) tally.leaveUnresolved(pending);
-          else tally.refuse(pending, exchange.detail);
+          if (!exchange.retryable) tally.refuse(pending, exchange.detail);
           return exchange;
         case 'closed':
         case 'aborted':
         case 'unconfirmed':
-          tally.leaveUnresolved(pending);
           return exchange;
         default: {
           const unhandled: never = exchange;
@@ -280,6 +291,11 @@ export class LagoSink implements Sink {
   #interruption(signal: AbortSignal | undefined): Stop | undefined {
     if (this.#transport.closed) return CLOSED;
     return signal?.aborted ? ABORTED : undefined;
+  }
+
+  /** Log an error that no code path anticipated; only its class name is recorded. */
+  #reportUnexpected(error: unknown): void {
+    this.#logger.error(`audr-sink-lago: delivery failed unexpectedly (${nameOf(error)})`);
   }
 
   /** A failure logs where it is decided; a stop requested from outside logs here. */

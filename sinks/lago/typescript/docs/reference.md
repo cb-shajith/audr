@@ -249,6 +249,7 @@ confirmed, rejected, or unknown. The sink answers one `BatchResult`:
 | Sending stopped, and no record had an outcome | `failed`, retryable or permanent as in [Responses](#responses); `closed` when the sink was closed |
 | Lago answered a `2xx` other than `200` | `accepted`, with that request's records and those of later requests in `unknown` |
 | The caller aborted through `DeliverOptions.signal` | `accepted` with the unresolved records in `unknown`, or `closed` when the sink was closed |
+| An unexpected error occurred while sending | As for any other stop: records with an outcome keep it and the rest are `unknown`; `failed` with detail `internal_error` when no record had an outcome |
 
 Sending stops at the first request that fails, and the events of later requests are then
 `unknown`, because their delivery was never attempted. The events of the failed request
@@ -289,7 +290,7 @@ a credential. A logger that throws cannot disturb delivery.
 | Level | When |
 | --- | --- |
 | `error` | The API key was rejected (`401`) or is not permitted to ingest events (`403`) |
-| `error` | An unexpected internal failure; the result is a permanent failure with detail `internal_error` |
+| `error` | An unexpected internal failure; the batch is answered as in [Batch results](#batch-results), as a permanent failure with detail `internal_error` only when no record had an outcome |
 | `warn` | A request was refused as too large or as too many events, rejected permanently, or ended on a transient status after its last attempt |
 | `warn` | Lago answered a `2xx` other than `200` |
 | `warn` | Lago refused or already held events of a request, or refused a request again after three resends |

@@ -6,8 +6,9 @@
  * rejected locally. A later failure never relabels such a record: `BatchResult` applies a
  * failure to the whole batch, which would report a confirmed record as dropped. Once any
  * record has a distinct outcome, the batch is answered `accepted`: the records of a request
- * Lago refused are named `rejected` with the reason, and the records that never reached an
- * outcome are named `unknown`.
+ * Lago refused are named `rejected` with the reason, and every record that never reached an
+ * outcome is named `unknown`. Unknown records are derived from the outcomes recorded, so they
+ * are complete however sending stopped.
  */
 import { BatchResult, type RejectedRecord } from '@openaudr/audr';
 
@@ -24,13 +25,20 @@ export type Stop =
   | { readonly kind: 'failed'; readonly retryable: boolean; readonly detail: string };
 
 export class Tally {
+  readonly #events: readonly LagoEvent[];
   readonly #rejected: RejectedRecord[];
   readonly #refused: RejectedRecord[] = [];
-  readonly #unresolved: string[] = [];
+  readonly #settled = new Set<string>();
   #confirmed = 0;
   #stop: Stop | undefined;
 
-  constructor(rejected: readonly RejectedRecord[]) {
+  /**
+   * @param events Every event of the batch, in order; the records without an outcome once
+   *   sending ends are the unknown ones.
+   * @param rejected Records rejected before anything was sent.
+   */
+  constructor(events: readonly LagoEvent[], rejected: readonly RejectedRecord[]) {
+    this.#events = events;
     this.#rejected = [...rejected];
   }
 
@@ -38,14 +46,16 @@ export class Tally {
     return this.#stop !== undefined;
   }
 
-  /** `count` events were accepted, or were found to be held by Lago already. */
-  confirm(count: number): void {
-    this.#confirmed += count;
+  /** The events were accepted, or were found to be held by Lago already. */
+  confirm(events: readonly LagoEvent[]): void {
+    for (const event of events) this.#settled.add(event.transaction_id);
+    this.#confirmed += events.length;
   }
 
   /** Lago refused the record, for a reason that no resend changes. */
   reject(recordId: string, detail: string): void {
     this.#rejected.push({ recordId, detail });
+    this.#settled.add(recordId);
   }
 
   /**
@@ -53,12 +63,10 @@ export class Tally {
    * when another record of the batch has an outcome; otherwise the whole batch fails.
    */
   refuse(events: readonly LagoEvent[], detail: string): void {
-    for (const event of events) this.#refused.push({ recordId: event.transaction_id, detail });
-  }
-
-  /** The events have no outcome: they were not sent, or the answer never arrived. */
-  leaveUnresolved(events: readonly LagoEvent[]): void {
-    for (const event of events) this.#unresolved.push(event.transaction_id);
+    for (const event of events) {
+      this.#refused.push({ recordId: event.transaction_id, detail });
+      this.#settled.add(event.transaction_id);
+    }
   }
 
   /** Sending stopped; the first reason stands. */
@@ -68,16 +76,19 @@ export class Tally {
 
   result(): BatchResult {
     const stop = this.#stop;
-    if (stop === undefined) return BatchResult.accepted({ rejected: this.#rejected });
+    const unresolved = this.#events
+      .map((event) => event.transaction_id)
+      .filter((recordId) => !this.#settled.has(recordId));
+    const unknown = unresolved.length > 0 ? { unknown: unresolved } : {};
+    if (stop === undefined) return BatchResult.accepted({ rejected: this.#rejected, ...unknown });
 
-    const unconfirmed = this.#unresolved.length > 0 ? this.#unresolved : undefined;
     const settled = this.#confirmed > 0 || this.#rejected.length > 0;
     // An aborted caller has already counted these records unknown, whatever else is settled,
     // and a failure would claim that records Lago may hold were dropped.
     if (stop.kind === 'aborted' || stop.kind === 'unconfirmed' || settled) {
       return BatchResult.accepted({
         rejected: [...this.#rejected, ...this.#refused],
-        unknown: unconfirmed,
+        ...unknown,
       });
     }
     switch (stop.kind) {

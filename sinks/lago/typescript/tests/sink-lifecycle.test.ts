@@ -14,9 +14,19 @@ import {
   records,
   respond,
   settle,
+  validation,
 } from './helpers.js';
 
 const ok = (): Response => respond(200);
+
+/** A response that fails when the sink reads its status, as a defect in the sink would. */
+function brokenResponse(): Response {
+  return Object.defineProperty(respond(200), 'status', {
+    get: (): number => {
+      throw new TypeError('unexpected');
+    },
+  });
+}
 
 describe('LagoSink lifecycle', () => {
   it('satisfies the sink contract', async () => {
@@ -235,6 +245,74 @@ describe('LagoSink lifecycle', () => {
       expect(logger.lines).toEqual([
         'error: audr-sink-lago: delivery failed unexpectedly (TypeError)',
       ]);
+    });
+
+    describe('when an unexpected error occurs while sending', () => {
+      const UNEXPECTED = 'error: audr-sink-lago: delivery failed unexpectedly (TypeError)';
+
+      it('keeps what earlier requests confirmed and reports the rest unknown', async () => {
+        const batch = records(250);
+        const logger = recordingLogger();
+        const { fetch, calls } = fakeFetch((_call, index) =>
+          index === 0 ? ok() : brokenResponse(),
+        );
+
+        const result = await makeSink({ fetch, logger }).deliver(batch);
+
+        expect(calls).toHaveLength(2);
+        expect(result).toEqual({
+          outcome: 'accepted',
+          rejected: [],
+          unknown: batch.slice(100).map((entry) => entry.record_id),
+        });
+        expect(logger.lines).toEqual([UNEXPECTED]);
+      });
+
+      it('keeps the outcomes a 422 settled and reports only the resend unknown', async () => {
+        const batch = records(4);
+        const logger = recordingLogger();
+        const { fetch } = fakeFetch((_call, index) =>
+          index === 0
+            ? validation({
+                0: { timestamp: ['invalid_format'] },
+                1: { transaction_id: ['value_already_exist'] },
+              })
+            : brokenResponse(),
+        );
+
+        const result = await makeSink({ fetch, logger }).deliver(batch);
+
+        expect(result).toEqual({
+          outcome: 'accepted',
+          rejected: [{ recordId: batch[0]?.record_id, detail: 'timestamp:invalid_format' }],
+          unknown: [batch[2]?.record_id, batch[3]?.record_id],
+        });
+        expect(logger.lines).toContain(UNEXPECTED);
+      });
+
+      it('keeps a record rejected locally and reports the rest unknown', async () => {
+        const bad = record({ subscription_id: undefined });
+        const batch = records(2);
+        const { fetch } = fakeFetch(brokenResponse);
+
+        const result = await makeSink({ fetch }).deliver([bad, ...batch]);
+
+        expect(result).toEqual({
+          outcome: 'accepted',
+          rejected: [{ recordId: bad.record_id, detail: 'missing_subscription_id' }],
+          unknown: batch.map((entry) => entry.record_id),
+        });
+      });
+
+      it('is a permanent failure when no record had an outcome yet', async () => {
+        const logger = recordingLogger();
+        const { fetch } = fakeFetch(brokenResponse);
+
+        const result = await makeSink({ fetch, logger }).deliver(records(3));
+
+        expect(result).toEqual({ outcome: 'permanent_failure', detail: 'internal_error' });
+        expect(logger.lines).toEqual([UNEXPECTED]);
+      });
     });
 
     it('is not disturbed by a logger that throws', async () => {
