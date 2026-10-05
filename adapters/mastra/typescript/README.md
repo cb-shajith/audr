@@ -3,13 +3,14 @@
 [![npm](https://img.shields.io/npm/v/@openaudr/audr-adapter-mastra?include_prereleases)](https://www.npmjs.com/package/@openaudr/audr-adapter-mastra)
 [![Node versions](https://img.shields.io/node/v/@openaudr/audr-adapter-mastra)](https://www.npmjs.com/package/@openaudr/audr-adapter-mastra)
 
-The **AUDR observability exporter** for [Mastra](https://mastra.ai) turns each ended
-`model_inference`, `rag_embedding`, `tool_call` and `mcp_tool_call` span into one
+The **AUDR observability exporter** for [Mastra](https://mastra.ai) turns each eligible
+ended `model_inference`, `rag_embedding`, `tool_call` and `mcp_tool_call` span into one
 [AUDR](https://openaudr.dev/spec/v1.0.0/) record for an `@openaudr/audr` `Client` your
 application owns. It reads usage, identifiers and timings only: never prompts, completions,
 tool inputs, tool outputs or error messages.
 
-> **Status: experimental.** Until 1.0.0, a minor release may change the public API.
+> **Status: alpha.** The record model tracks AUDR v1.0.0; until 1.0.0, a minor release may
+> change the public API.
 
 ## Setup
 
@@ -18,10 +19,8 @@ npm install @openaudr/audr @openaudr/audr-adapter-mastra @mastra/core @mastra/ob
 ```
 
 Requires Node.js 22.12 or later, `@mastra/core` 1.62.0 or later and `@mastra/observability`
-1.17.2 or later. That `@mastra/observability` release is the first that emits `span_ended`
-once per span and counts Anthropic cache tokens in `inputTokens` only once; earlier
-releases produce duplicate or inflated records. All three packages are peer dependencies, and the
-adapter imports only types from `@mastra/*`.
+1.17.2 or later. All three packages are peer dependencies; the adapter imports only types
+from `@mastra/*`.
 
 ## Usage
 
@@ -56,60 +55,6 @@ const mastra = new Mastra({
 });
 
 await agent.generate('Where is order 42?', {
-  tracingOptions: { metadata: { audr: { account_id: 'acct_42', subscription_id: 'sub_7' } } },
-});
-
-await mastra.shutdown();
-await client.shutdown();
-```
-
-Shut down Mastra first, then the client. The exporter's `shutdown()` leaves the client
-open, and its `flush()` delegates to `client.flush()`. A runnable version with a mock model
-and a tool is
-[`examples/agent.ts`](https://github.com/openaudr/audr/blob/main/adapters/mastra/typescript/examples/agent.ts).
-
-> [!IMPORTANT]
-> Metered spans reach the exporter only when Mastra observability emits them. Keep
-> `sampling.type` at `always`, set `includeInternalSpans: true` when internal model calls
-> are billable, and leave `model_inference`, `rag_embedding`, `tool_call` and
-> `mcp_tool_call` out of `excludeSpanTypes`. The exporter warns with
-> `CONFIG_DROPS_SPANS` at registration when these settings can drop metered spans.
-
-## Attribution
-
-Attribution is resolved per ended span from `metadata.audr` merged field by field over
-`attributionDefaults`. The span wins, and `labels` merge by key. Metadata set on the root
-span reaches every child span, so a tool call carries the attribution of the agent call that
-made it:
-
-```ts
-import { Agent } from '@mastra/core/agent';
-import { Mastra } from '@mastra/core/mastra';
-import { Observability } from '@mastra/observability';
-import { Client } from '@openaudr/audr';
-import { AudrExporter } from '@openaudr/audr-adapter-mastra';
-import { FileSink } from '@openaudr/audr/file';
-
-const client = new Client(new FileSink('audr.jsonl'), {
-  emitter: { component: 'harness', name: 'my-app', version: '1.0.0' },
-});
-const exporter = new AudrExporter({ client, attributionDefaults: { environment: 'production' } });
-const agent = new Agent({
-  id: 'support',
-  name: 'Support',
-  instructions: 'Help customers with orders.',
-  model: 'openai/gpt-5.4',
-});
-const mastra = new Mastra({
-  agents: { agent },
-  observability: new Observability({
-    configs: {
-      default: { serviceName: 'my-app', exporters: [exporter], includeInternalSpans: true },
-    },
-  }),
-});
-
-await agent.generate('Where is order 42?', {
   tracingOptions: {
     metadata: {
       audr: {
@@ -125,6 +70,25 @@ await agent.generate('Where is order 42?', {
 await mastra.shutdown();
 await client.shutdown();
 ```
+
+Shut down Mastra first, then the client. A runnable version with a mock model and a tool is
+[`examples/agent.ts`](https://github.com/openaudr/audr/blob/main/adapters/mastra/typescript/examples/agent.ts).
+
+> [!IMPORTANT]
+> Metered spans reach the exporter only when Mastra observability emits them. Keep
+> `sampling.type` at `always`, set `includeInternalSpans: true` when internal model calls
+> are billable, and leave `model_inference`, `rag_embedding`, `tool_call` and
+> `mcp_tool_call` out of `excludeSpanTypes`. The `agent_run` and `workflow_run` spans used
+> to recognize delegation wrappers must also remain visible. The exporter warns with
+> `CONFIG_DROPS_SPANS` at registration when these settings can omit metered spans or
+> delegation markers.
+
+## Attribution
+
+Attribution is resolved per ended span from `metadata.audr` merged field by field over
+`attributionDefaults`. The span wins, and `labels` merge by key. Metadata set on the root
+span reaches every child span, so a tool call carries the attribution of the agent call that
+made it. The usage example sets every supported attribution field.
 
 Attribution can also come from the request context. Listing the key in
 `requestContextKeys` makes Mastra copy it onto span metadata:
@@ -190,8 +154,9 @@ and reasoning tokens are counted apart from `input_tokens` and `output_tokens`, 
 counter Mastra did not report is omitted rather than zeroed. Cost is never written.
 
 Not metered: provider-executed and client-side tools that Mastra does not surface as
-`tool_call` or `mcp_tool_call`, `agent-` and `workflow-` delegation tools, Mastra internal
-spans unless `includeInternalSpans` is set, and spans that sampling or filters drop.
+`tool_call` or `mcp_tool_call`, delegation tools with a direct `agent_run` or `workflow_run`
+child, Mastra internal spans unless `includeInternalSpans` is set, and spans that sampling
+or filters drop.
 
 ## Documentation
 

@@ -1,10 +1,10 @@
 # Mastra
 
 An [adapter](../README.md) that registers as a Mastra `ObservabilityExporter` and turns each
-ended `model_generation` span and each `tool_call` / `mcp_tool_call` span into an
-[AUDR](../../spec/SPEC.md) record for an `@openaudr/audr` `Client` the host application owns.
-Attribution is read from span `metadata.audr`, with configurable defaults; the adapter reads no
-prompts, completions, tool inputs or tool outputs.
+eligible ended `model_inference`, `rag_embedding`, `tool_call` and `mcp_tool_call` span into
+an [AUDR](../../spec/SPEC.md) record for an `@openaudr/audr` `Client` the host application
+owns. Attribution is read from span `metadata.audr`, with configurable defaults; the adapter
+reads no prompts, completions, tool inputs or tool outputs.
 
 | Language | Distribution | Package guide |
 | --- | --- | --- |

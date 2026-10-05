@@ -1,7 +1,7 @@
 # Reference
 
-The full reference for `@openaudr/audr-adapter-mastra`. Installation, usage and attribution
-are in the [README](../README.md).
+This is the full reference for `@openaudr/audr-adapter-mastra`. Installation, usage and
+attribution are in the [README](../README.md).
 
 ## Options
 
@@ -54,9 +54,9 @@ provider call that reports no token counters still produces a record with `reque
 - **Embeddings.** `resource.name` is `model`, `resource.operation` is `embedding` and
   `resource.modality` is `text`.
 - **Tools.** `resource.provider` is `self-hosted` and `resource.name` is the tool name
-  (`entityName`). On `tool_call` spans, names beginning `agent-` or `workflow-` are Mastra
-  delegations and do not produce an additional tool record; their child model and tool spans
-  are metered instead.
+  (`entityName`). A `tool_call` with a direct `agent_run` or `workflow_run` child is a Mastra
+  delegation and does not produce an additional tool record; its child operations remain
+  metered. User-defined tools are unaffected by their names.
 
 A span with no valid provider slug, no model name or no tool name is skipped with
 `RESOURCE_UNRESOLVED`.
@@ -103,8 +103,8 @@ The table matches the Vercel AI SDK adapter's, so records from both adapters joi
 
 ## Diagnostics
 
-The adapter uses an explicit `logger`, otherwise Mastra supplies its logger through
-`__setLogger` when the exporter is registered. Before registration it is silent. Each message has the form
+Diagnostics go to the `logger` option when set, otherwise to the Mastra instance's logger.
+Each message has the form
 `@openaudr/audr-adapter-mastra: <CODE> (<key>=<value>, ...)` and carries span types, setting
 names, submit outcomes, issue paths and error class names only, never a record value or an
 error message. The `DiagnosticCode` type lists every code.
@@ -114,7 +114,7 @@ error message. The `DiagnosticCode` type lists every code.
 | `ATTRIBUTION_UNRESOLVED` | warn | A metered span has no `environment` in its merged attribution; it is not metered | Set `environment` in `attributionDefaults` or `metadata.audr` |
 | `RESOURCE_UNRESOLVED` | warn | A model or embedding span has no valid provider slug or model name, or a tool span has no name; the record is skipped | Check the model's provider id against [provider slugs](#provider-slugs) |
 | `RECORD_NOT_QUEUED` | warn | The `Client` rejects or drops a record; `issues` lists each `<code>@<path>` | Fix the attribution the issue path names, or check that the client is running |
-| `CONFIG_DROPS_SPANS` | warn | At registration, `sampling.type` is not `always`, `includeInternalSpans` is not `true`, or `excludeSpanTypes` lists a metered span type; `setting` names which | Change the observability configuration |
+| `CONFIG_DROPS_SPANS` | warn | At registration, `sampling.type` is not `always`, `includeInternalSpans` is not `true`, or `excludeSpanTypes` lists a metered span type or delegation marker; `setting` names which | Change the observability configuration |
 | `EXPORT_FAILED` | error | An exception while exporting a span or flushing the client; Mastra continues | Report it as a bug, with the error class |
 
 An error class is one of the built-in `Error` subclasses, `Error`, the `typeof` of a thrown
@@ -126,16 +126,18 @@ writable and may carry prompt or record values.
 - `model_generation`, `model_step`, `model_chunk`, and every span type other than
   `model_inference`, `rag_embedding`, `tool_call` and `mcp_tool_call`.
 - Mastra internal spans unless observability is configured with `includeInternalSpans: true`.
-- Mastra agent and workflow delegation tool spans, identified by their `agent-` and
-  `workflow-` name prefixes. Their child operations remain metered.
+- Mastra delegation tool spans with a direct `agent_run` or `workflow_run` child. Their child
+  operations remain metered.
 - Provider-executed tools, and client-side tools Mastra does not surface as `tool_call` or
   `mcp_tool_call` spans.
 - Spans dropped by sampling, `excludeSpanTypes` or a `spanFilter`.
 
 ## Operational bounds
 
-- The exporter handles `span_ended` events only and hands each record to `client.record()`
-  before `exportTracingEvent` returns, so it holds no records between events.
+- The exporter builds records from `span_ended` events and hands each one to
+  `client.record()` before `exportTracingEvent` returns. It holds no records between events;
+  it tracks open `tool_call` span ids until they end so direct agent and workflow children
+  identify delegation wrappers.
 - `exportTracingEvent` and `flush` never throw into Mastra; an exception is logged as
   `EXPORT_FAILED`.
 - `Client.record()` validates every record value and never throws. A record it does not

@@ -37,6 +37,11 @@ const METERED_SPAN_TYPES: ReadonlySet<string> = new Set<MeteredSpanType>([
   'tool_call',
   'mcp_tool_call',
 ]);
+const DELEGATION_SPAN_TYPES: ReadonlySet<string> = new Set(['agent_run', 'workflow_run']);
+const REQUIRED_SPAN_TYPES: ReadonlySet<string> = new Set([
+  ...METERED_SPAN_TYPES,
+  ...DELEGATION_SPAN_TYPES,
+]);
 
 /** Mastra accepts a caller-supplied `traceId` of 1 to 32 hex digits; AUDR needs exactly 32. */
 const W3C_TRACE_ID = /^[0-9a-f]{32}$/;
@@ -53,13 +58,14 @@ export interface AudrExporterOptions {
   /** Host-owned client; the exporter never shuts it down. */
   readonly client: Client;
   readonly attributionDefaults?: Attribution | undefined;
-  /** Default: silent. */
+  /** Default: Mastra's logger after registration; silent beforehand. */
   readonly logger?: Logger | undefined;
 }
 
 /**
- * Mastra observability exporter that turns ended `model_inference`, `rag_embedding`,
- * `tool_call` and `mcp_tool_call` spans into AUDR records for the host's `client`.
+ * Mastra observability exporter that turns eligible ended `model_inference`,
+ * `rag_embedding`, `tool_call` and `mcp_tool_call` spans into AUDR records for the host's
+ * `client`.
  */
 export class AudrExporter implements ObservabilityExporter {
   readonly name = 'audr';
@@ -67,6 +73,8 @@ export class AudrExporter implements ObservabilityExporter {
   readonly #client: Client;
   readonly #defaults: Attribution | undefined;
   readonly #hasExplicitLogger: boolean;
+  readonly #openToolSpans = new Set<string>();
+  readonly #delegationToolSpans = new Set<string>();
   #diagnostics: Diagnostics;
 
   constructor(options: AudrExporterOptions) {
@@ -88,13 +96,13 @@ export class AudrExporter implements ObservabilityExporter {
     if (!this.#hasExplicitLogger) this.#diagnostics = new Diagnostics(logger);
   }
 
-  /** Warns when the observability config would keep metered spans from reaching the exporter. */
+  /** Warns when the observability config omits metered spans or delegation markers. */
   init({ config }: InitExporterOptions): void {
     const sampling = config?.sampling?.type as string | undefined;
     if (sampling !== undefined && sampling !== 'always') {
       this.#diagnostics.warn('CONFIG_DROPS_SPANS', { setting: 'sampling' });
     }
-    if (config?.excludeSpanTypes?.some((type) => METERED_SPAN_TYPES.has(type))) {
+    if (config?.excludeSpanTypes?.some((type) => REQUIRED_SPAN_TYPES.has(type))) {
       this.#diagnostics.warn('CONFIG_DROPS_SPANS', { setting: 'excludeSpanTypes' });
     }
     if (config?.includeInternalSpans !== true) {
@@ -104,7 +112,18 @@ export class AudrExporter implements ObservabilityExporter {
 
   exportTracingEvent(event: TracingEvent): Promise<void> {
     try {
-      if ((event.type as string) === 'span_ended') this.#record(event.exportedSpan);
+      const eventType = event.type as string;
+      const span = event.exportedSpan;
+      if (eventType === 'span_started') {
+        this.#trackStarted(span);
+      } else if (eventType === 'span_ended') {
+        this.#trackDelegationChild(span);
+        try {
+          this.#record(span);
+        } finally {
+          if ((span.type as string) === 'tool_call') this.#finishTool(span.id);
+        }
+      }
     } catch (error) {
       this.#diagnostics.error('EXPORT_FAILED', { error: errorName(error) });
     }
@@ -120,6 +139,8 @@ export class AudrExporter implements ObservabilityExporter {
   }
 
   shutdown(): Promise<void> {
+    this.#openToolSpans.clear();
+    this.#delegationToolSpans.clear();
     return Promise.resolve();
   }
 
@@ -214,19 +235,34 @@ export class AudrExporter implements ObservabilityExporter {
       this.#diagnostics.warn('RESOURCE_UNRESOLVED', { span: span.type });
       return undefined;
     }
-    if (spanType === 'tool_call' && isDelegationTool(name)) return undefined;
+    if (spanType === 'tool_call' && this.#delegationToolSpans.has(span.id)) return undefined;
     return {
       resource: { provider: TOOL_PROVIDER, type: 'tool', name, operation: 'tool_execution' },
       usage: { tool: { type: 'invocation', call_count: 1 } },
       errorCode: TOOL_ERROR_CODE,
     };
   }
+
+  #trackStarted(span: AnyExportedSpan): void {
+    const spanType = span.type as string;
+    if (spanType === 'tool_call') this.#openToolSpans.add(span.id);
+    this.#trackDelegationChild(span);
+  }
+
+  #trackDelegationChild(span: AnyExportedSpan): void {
+    if (!DELEGATION_SPAN_TYPES.has(span.type)) return;
+    const parentSpanId = nonEmpty(span.parentSpanId);
+    if (parentSpanId !== undefined && this.#openToolSpans.has(parentSpanId)) {
+      this.#delegationToolSpans.add(parentSpanId);
+    }
+  }
+
+  #finishTool(spanId: string): void {
+    this.#openToolSpans.delete(spanId);
+    this.#delegationToolSpans.delete(spanId);
+  }
 }
 
 function isMeteredSpanType(spanType: string): spanType is MeteredSpanType {
   return METERED_SPAN_TYPES.has(spanType);
-}
-
-function isDelegationTool(name: string): boolean {
-  return name.startsWith('agent-') || name.startsWith('workflow-');
 }

@@ -142,6 +142,10 @@ export function ended(span: AnyExportedSpan): TracingEvent {
   return { type: 'span_ended' as never, exportedSpan: span };
 }
 
+export function started(span: AnyExportedSpan): TracingEvent {
+  return { type: 'span_started' as never, exportedSpan: span };
+}
+
 export const LLM_USAGE = {
   input_tokens: 100,
   output_tokens: 40,

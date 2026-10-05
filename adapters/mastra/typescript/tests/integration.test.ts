@@ -59,6 +59,46 @@ function mockModel(): MockLanguageModelV3 {
   });
 }
 
+function delegationModel(): MockLanguageModelV3 {
+  let calls = 0;
+  return new MockLanguageModelV3({
+    provider: 'openai.chat',
+    modelId: 'gpt-5.4',
+    doGenerate: () => {
+      calls += 1;
+      return Promise.resolve({
+        content:
+          calls === 1
+            ? [
+                {
+                  type: 'tool-call' as const,
+                  toolCallId: 'delegate-1',
+                  toolName: 'agent-researcher',
+                  input: JSON.stringify({ prompt: 'Research order 42.' }),
+                },
+              ]
+            : [{ type: 'text' as const, text: 'Research complete.' }],
+        finishReason: { unified: calls === 1 ? 'tool-calls' : 'stop', raw: undefined },
+        usage: USAGE,
+        warnings: [],
+      });
+    },
+  });
+}
+
+function answerModel(): MockLanguageModelV3 {
+  return new MockLanguageModelV3({
+    provider: 'openai.chat',
+    modelId: 'gpt-5.4-mini',
+    doGenerate: {
+      content: [{ type: 'text', text: 'Order 42 shipped.' }],
+      finishReason: { unified: 'stop', raw: undefined },
+      usage: USAGE,
+      warnings: [],
+    },
+  });
+}
+
 const lookup = createTool({
   id: 'lookup',
   description: 'Look up an order',
@@ -139,6 +179,38 @@ describe('agent.generate', () => {
     for (const record of all) {
       expect(record.attribution).toEqual({ environment: 'test', subscription_id: 'sub_99' });
     }
+  });
+
+  it('does not record the tool wrapper around a delegated agent', async () => {
+    const h = harness();
+    const researcher = new Agent({
+      id: 'researcher',
+      name: 'Researcher',
+      instructions: 'Research an order.',
+      model: answerModel(),
+    });
+    const coordinator = new Agent({
+      id: 'coordinator',
+      name: 'Coordinator',
+      instructions: 'Delegate research.',
+      model: delegationModel(),
+      agents: { researcher },
+    });
+    const observability = new Observability({
+      configs: {
+        default: {
+          serviceName: 'audr-test',
+          exporters: [h.exporter],
+          includeInternalSpans: true,
+        },
+      },
+    });
+    new Mastra({ agents: { coordinator, researcher }, observability });
+
+    await coordinator.generate('Where is order 42?', { maxSteps: 5 });
+    const all = await h.records();
+    expect(all.filter((record) => record.resource.operation === 'generation')).toHaveLength(3);
+    expect(all.filter((record) => record.resource.operation === 'tool_execution')).toHaveLength(0);
   });
 });
 

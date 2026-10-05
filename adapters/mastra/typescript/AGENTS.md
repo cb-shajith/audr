@@ -9,22 +9,9 @@ covers changes to the package itself.
 ## What this is
 
 `adapters/mastra/typescript` is the `@openaudr/audr-adapter-mastra` npm package: a Mastra
-`ObservabilityExporter` that turns ended `model_inference`, `rag_embedding`, `tool_call`
-and `mcp_tool_call` spans into attributed AUDR records for an `@openaudr/audr` `Client`
-the host application owns.
-
-## Layout
-
-| Path | Owns |
-| --- | --- |
-| `src/index.ts` | The public exports, pinned by `tests/public-api.test.ts` |
-| `src/exporter.ts` | `AudrExporter`, lifecycle, span handling and `client.record()` |
-| `src/attribution.ts` | The `metadata.audr` reader and the merge over defaults |
-| `src/mapping.ts` | Token arithmetic, provider slugs, timing helpers, error codes |
-| `src/diagnostics.ts` | `DiagnosticCode`, the message format, `errorName`, the silent default logger |
-| `docs/reference.md` | The full reference: options, record fields, provider slugs, diagnostics, bounds |
-| `tests/` | The Vitest suite |
-| `examples/` | Runnable examples on mock models; no credentials or network calls |
+`ObservabilityExporter` that turns eligible ended `model_inference`, `rag_embedding`,
+`tool_call` and `mcp_tool_call` spans into attributed AUDR records for an
+`@openaudr/audr` `Client` the host application owns.
 
 ## Rules
 
@@ -33,8 +20,8 @@ the host application owns.
    JavaScript. This package imports no `node:` modules in `src/`.
 2. Meter only `model_inference`, `rag_embedding`, `tool_call` and `mcp_tool_call` on
    `span_ended`. Ignore `model_generation`, `model_step`, `model_chunk` and every other
-   span type so usage is not double-counted. Tool names beginning `agent-` or `workflow-`
-   are Mastra delegations and are not separate tool usage.
+   span type so usage is not double-counted. A `tool_call` with a direct `agent_run` or
+   `workflow_run` child is a Mastra delegation and is not separate tool usage.
 3. Read no payloads. Never read prompts, instructions, messages, content, tool inputs, tool
    outputs or error messages. `tests/privacy.test.ts` plants a sentinel in every payload
    position.
@@ -59,10 +46,8 @@ The shared toolchain is defined in the top-level
 package:
 
 - **Peer dependencies:** `@mastra/core`, `@mastra/observability` and `@openaudr/audr`, each
-  also a development dependency pinned to the lowest supported release. The
-  `@mastra/observability` floor is the first release that emits `span_ended` once per span
-  and stops re-adding Anthropic cache tokens to `inputTokens`; the `@mastra/core` floor is the
-  release that one was built against. Raise them together.
+  also a development dependency pinned to the lowest supported release. Raise the ranges
+  and pins together.
 - **`ai` is a dev dependency only**, for the mock models in `ai/test`.
 - **Version:** `package.json` and `src/version.ts`; `tests/public-api.test.ts` keeps them
   equal.

@@ -1,7 +1,7 @@
 import type { UsageStats } from '@mastra/core/observability';
 import type { LlmUsage } from '@openaudr/audr';
 
-/** Written to `run.error_code` on a failed model generation that still reported usage. */
+/** Written to `run.error_code` on a failed model inference or embedding. */
 export const MODEL_ERROR_CODE = 'MASTRA_MODEL_ERROR';
 
 /** Written to `run.error_code` on a failed tool call. */

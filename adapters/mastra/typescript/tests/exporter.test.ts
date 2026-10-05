@@ -9,6 +9,7 @@ import {
   harness,
   LLM_USAGE,
   modelSpan,
+  started,
   toolSpan,
   TRACE_ID,
 } from './helpers.js';
@@ -160,17 +161,39 @@ describe('tool records', () => {
     expect(record!.run.error_code).toBe('MASTRA_TOOL_ERROR');
   });
 
-  it.each(['agent-researcher', 'workflow-order-fulfillment'])(
-    'does not meter Mastra delegation tool %s',
-    async (entityName) => {
+  it.each(['agent_run', 'workflow_run'])(
+    'does not meter a tool with a child %s span',
+    async (childType) => {
       const h = harness();
-      await h.exporter.exportTracingEvent(ended(toolSpan({ entityName })));
+      const tool = toolSpan({ entityName: 'delegation' });
+      await h.exporter.exportTracingEvent(started(tool));
+      await h.exporter.exportTracingEvent(
+        started(
+          modelSpan({
+            id: 'd'.repeat(16),
+            type: childType as never,
+            parentSpanId: tool.id,
+          }),
+        ),
+      );
+      await h.exporter.exportTracingEvent(ended(tool));
       expect(await h.records()).toHaveLength(0);
       expect(h.logger.lines).toEqual([]);
     },
   );
 
-  it('does not treat an MCP tool name as a Mastra delegation', async () => {
+  it.each(['agent-researcher', 'workflow-order-fulfillment'])(
+    'meters a user-defined tool named %s when it has no delegation child',
+    async (entityName) => {
+      const h = harness();
+      const tool = toolSpan({ entityName });
+      await h.exporter.exportTracingEvent(started(tool));
+      await h.exporter.exportTracingEvent(ended(tool));
+      expect(await h.records()).toHaveLength(1);
+    },
+  );
+
+  it('does not treat an MCP tool as a Mastra delegation', async () => {
     const h = harness();
     await h.exporter.exportTracingEvent(
       ended(toolSpan({ entityName: 'agent-lookup' }, 'mcp_tool_call')),
@@ -228,18 +251,21 @@ describe('warnings', () => {
 });
 
 describe('lifecycle', () => {
-  it('init warns when excludeSpanTypes drops metered spans', () => {
-    const h = harness();
-    h.exporter.init({
-      config: {
-        name: 'x',
-        serviceName: 'y',
-        includeInternalSpans: true,
-        excludeSpanTypes: ['model_inference'],
-      } as ObservabilityInstanceConfig,
-    });
-    expect(h.logger.warnings[0]).toMatch(/CONFIG_DROPS_SPANS.*setting=excludeSpanTypes/);
-  });
+  it.each(['model_inference', 'agent_run', 'workflow_run'])(
+    'init warns when excludeSpanTypes drops %s',
+    (spanType) => {
+      const h = harness();
+      h.exporter.init({
+        config: {
+          name: 'x',
+          serviceName: 'y',
+          includeInternalSpans: true,
+          excludeSpanTypes: [spanType],
+        } as ObservabilityInstanceConfig,
+      });
+      expect(h.logger.warnings[0]).toMatch(/CONFIG_DROPS_SPANS.*setting=excludeSpanTypes/);
+    },
+  );
 
   it('init warns when sampling drops spans', () => {
     const h = harness();
