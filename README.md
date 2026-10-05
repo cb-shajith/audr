@@ -46,7 +46,7 @@ attribution that the records join.
 | [`spec/`](spec/SPEC.md) | The standard: [`SPEC.md`](spec/SPEC.md) to implement it, [`audr.schema.json`](spec/audr.schema.json) to validate records, [`examples/record.json`](spec/examples/record.json) for a complete record |
 | [`conformance/`](conformance/README.md) | Language-neutral fixtures every implementation must reproduce |
 | [`adapters/`](adapters/README.md) | Things that produce records — the [Python](adapters/core/python/README.md) and [TypeScript](adapters/core/typescript/README.md) SDKs and runtime adapters |
-| [`sinks/`](sinks/README.md) | Things that consume records — destinations such as Chargebee |
+| [`sinks/`](sinks/README.md) | Things that consume records — destinations such as Chargebee and Lago |
 | `tools/` | The specification generator and the repository checks, driven by the [`Makefile`](Makefile) |
 
 The schema's canonical URL is its `$id`:
@@ -113,7 +113,7 @@ asyncio.run(main())
 | --- | --- | --- |
 | Core SDK | [`audr`](adapters/core/python/README.md) (Python), [`@openaudr/audr`](adapters/core/typescript/README.md) (TypeScript) | [`adapters/core/README.md`](adapters/core/README.md) — the `Client`, the sink contract, delivery states |
 | Adapters | [`audr-adapter-litellm`](adapters/litellm/python/README.md) (Python), [`audr-adapter-nemo-relay`](adapters/nemo-relay/python/README.md) (Python), [`@openaudr/audr-adapter-merge-gateway`](adapters/merge-gateway/typescript/README.md) (TypeScript), [`@openaudr/audr-adapter-vercel-ai`](adapters/vercel-ai/typescript/README.md) (TypeScript), [`@openaudr/audr-adapter-mastra`](adapters/mastra/typescript/README.md) (TypeScript) | [`adapters/README.md`](adapters/README.md) |
-| Sinks | [`audr-sink-chargebee`](sinks/chargebee/python/README.md) (Python), [`@openaudr/audr-sink-chargebee`](sinks/chargebee/typescript/README.md) (TypeScript) | [`sinks/README.md`](sinks/README.md) |
+| Sinks | [`audr-sink-chargebee`](sinks/chargebee/python/README.md) (Python), [`@openaudr/audr-sink-chargebee`](sinks/chargebee/typescript/README.md) (TypeScript), [`@openaudr/audr-sink-lago`](sinks/lago/typescript/README.md) (TypeScript) | [`sinks/README.md`](sinks/README.md) |
 
 ## Status
 

@@ -74,6 +74,9 @@ jobs:
             sinks/chargebee/typescript:
               - *core
               - "sinks/chargebee/typescript/**"
+            sinks/lago/typescript:
+              - *core
+              - "sinks/lago/typescript/**"
 
   root-lint:
     name: Shared tooling format
