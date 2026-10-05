@@ -1,6 +1,6 @@
 .PHONY: help spec check schema examples conformance lint fresh links versions tools-test install clean all
 .PHONY: python core-python adapter-litellm-python adapter-nemo-relay-python sink-chargebee-python
-.PHONY: typescript typescript-install typescript-lint core-typescript adapter-merge-gateway-typescript adapter-vercel-ai-typescript sink-chargebee-typescript
+.PHONY: typescript typescript-install typescript-lint core-typescript adapter-merge-gateway-typescript adapter-vercel-ai-typescript adapter-mastra-typescript sink-chargebee-typescript
 
 PYTHON ?= python3
 
@@ -74,10 +74,13 @@ adapter-merge-gateway-typescript: typescript-install ## Verify the Merge Gateway
 adapter-vercel-ai-typescript: typescript-install ## Verify the Vercel AI TypeScript adapter
 	@$(MAKE) -C adapters/vercel-ai/typescript verify
 
+adapter-mastra-typescript: typescript-install ## Verify the Mastra TypeScript adapter
+	@$(MAKE) -C adapters/mastra/typescript verify
+
 sink-chargebee-typescript: typescript-install ## Verify the Chargebee TypeScript sink (sinks/chargebee/typescript)
 	@$(MAKE) -C sinks/chargebee/typescript verify
 
-typescript: typescript-lint core-typescript adapter-merge-gateway-typescript adapter-vercel-ai-typescript sink-chargebee-typescript ## Verify every TypeScript package
+typescript: typescript-lint core-typescript adapter-merge-gateway-typescript adapter-vercel-ai-typescript adapter-mastra-typescript sink-chargebee-typescript ## Verify every TypeScript package
 
 all: check python typescript ## Everything CI runs, across the repository
 

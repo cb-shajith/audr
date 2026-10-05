@@ -68,6 +68,9 @@ jobs:
             adapters/vercel-ai/typescript:
               - *core
               - "adapters/vercel-ai/typescript/**"
+            adapters/mastra/typescript:
+              - *core
+              - "adapters/mastra/typescript/**"
             sinks/chargebee/typescript:
               - *core
               - "sinks/chargebee/typescript/**"
