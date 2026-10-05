@@ -33,23 +33,23 @@ export function nonEmpty(value: unknown): string | undefined {
 }
 
 /**
- * AUDR token counters from Mastra usage, or `undefined` when nothing was reported. Mastra's
- * `inputTokens` includes cache reads and writes and its `outputTokens` includes reasoning,
- * while AUDR counts each separately, so both totals are reduced. `inputDetails.text` is not
- * used: it also excludes audio and image tokens, which AUDR still counts as input.
+ * AUDR counters for one Mastra provider call. Mastra's `inputTokens` includes cache reads
+ * and writes and its `outputTokens` includes reasoning, while AUDR counts each separately,
+ * so both totals are reduced. `inputDetails.text` is not used: it also excludes audio and
+ * image tokens, which AUDR still counts as input.
  */
-export function toLlmUsage(usage: UsageStats): LlmUsage | undefined {
+export function toLlmUsage(usage: UsageStats): LlmUsage {
   const cacheRead = counter(usage.inputDetails?.cacheRead);
   const cacheWrite = counter(usage.inputDetails?.cacheWrite);
   const reasoning = counter(usage.outputDetails?.reasoning);
-  const llm = withoutUndefined({
+  return withoutUndefined({
     input_tokens: subtract(counter(usage.inputTokens), (cacheRead ?? 0) + (cacheWrite ?? 0)),
     output_tokens: subtract(counter(usage.outputTokens), reasoning ?? 0),
     cache_read_tokens: cacheRead,
     cache_write_tokens: cacheWrite,
     reasoning_tokens: reasoning,
+    requests: 1,
   });
-  return Object.keys(llm).length === 0 ? undefined : llm;
 }
 
 /**

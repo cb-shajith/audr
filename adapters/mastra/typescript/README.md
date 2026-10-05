@@ -4,10 +4,10 @@
 [![Node versions](https://img.shields.io/node/v/@openaudr/audr-adapter-mastra)](https://www.npmjs.com/package/@openaudr/audr-adapter-mastra)
 
 The **AUDR observability exporter** for [Mastra](https://mastra.ai) turns each ended
-`model_generation` span and each `tool_call` or `mcp_tool_call` span into one
+`model_inference`, `rag_embedding`, `tool_call` and `mcp_tool_call` span into one
 [AUDR](https://openaudr.dev/spec/v1.0.0/) record for an `@openaudr/audr` `Client` your
-application owns. It reads usage, identifiers and timings only: never prompts,
-completions, tool inputs, tool outputs or error messages.
+application owns. It reads usage, identifiers and timings only: never prompts, completions,
+tool inputs, tool outputs or error messages.
 
 > **Status: experimental.** Until 1.0.0, a minor release may change the public API.
 
@@ -49,7 +49,9 @@ const agent = new Agent({
 const mastra = new Mastra({
   agents: { agent },
   observability: new Observability({
-    configs: { default: { serviceName: 'my-app', exporters: [exporter] } },
+    configs: {
+      default: { serviceName: 'my-app', exporters: [exporter], includeInternalSpans: true },
+    },
   }),
 });
 
@@ -68,9 +70,10 @@ and a tool is
 
 > [!IMPORTANT]
 > Metered spans reach the exporter only when Mastra observability emits them. Keep
-> `sampling.type` at `always` and leave `model_generation`, `tool_call` and `mcp_tool_call`
-> out of `excludeSpanTypes`. The exporter warns with `CONFIG_DROPS_SPANS` at registration
-> when either setting can drop them.
+> `sampling.type` at `always`, set `includeInternalSpans: true` when internal model calls
+> are billable, and leave `model_inference`, `rag_embedding`, `tool_call` and
+> `mcp_tool_call` out of `excludeSpanTypes`. The exporter warns with
+> `CONFIG_DROPS_SPANS` at registration when these settings can drop metered spans.
 
 ## Attribution
 
@@ -100,7 +103,9 @@ const agent = new Agent({
 const mastra = new Mastra({
   agents: { agent },
   observability: new Observability({
-    configs: { default: { serviceName: 'my-app', exporters: [exporter] } },
+    configs: {
+      default: { serviceName: 'my-app', exporters: [exporter], includeInternalSpans: true },
+    },
   }),
 });
 
@@ -147,7 +152,12 @@ const mastra = new Mastra({
   agents: { agent },
   observability: new Observability({
     configs: {
-      default: { serviceName: 'my-app', exporters: [exporter], requestContextKeys: ['audr'] },
+      default: {
+        serviceName: 'my-app',
+        exporters: [exporter],
+        includeInternalSpans: true,
+        requestContextKeys: ['audr'],
+      },
     },
   }),
 });
@@ -170,16 +180,18 @@ await client.shutdown();
 
 | Mastra span (`span_ended`) | `resource.operation` | `usage` |
 | --- | --- | --- |
-| `model_generation` | `generation` | `llm` tokens |
+| `model_inference` | `generation` | `llm` tokens and `requests: 1` |
+| `rag_embedding` | `embedding` | `llm` input tokens and `requests: 1` |
 | `tool_call`, `mcp_tool_call` | `tool_execution` | `tool: { type: 'invocation', call_count: 1 }` |
 
-A generation's usage covers every step of the call, so `model_step` and `model_chunk` spans
-are not metered. Cache and reasoning tokens are counted apart from `input_tokens` and
-`output_tokens`, and a counter Mastra did not report is omitted rather than zeroed. Cost is
-never written.
+Each `model_inference` is one provider request, including a failed request that reports no
+token counters. `model_generation`, `model_step` and `model_chunk` are not metered. Cache
+and reasoning tokens are counted apart from `input_tokens` and `output_tokens`, and a
+counter Mastra did not report is omitted rather than zeroed. Cost is never written.
 
-Not metered: embedding calls, provider-executed tools, Mastra internal model calls unless
-`includeInternalSpans` is set, and spans that sampling or filters drop.
+Not metered: provider-executed and client-side tools that Mastra does not surface as
+`tool_call` or `mcp_tool_call`, `agent-` and `workflow-` delegation tools, Mastra internal
+spans unless `includeInternalSpans` is set, and spans that sampling or filters drop.
 
 ## Documentation
 

@@ -17,6 +17,7 @@ describe('toLlmUsage', () => {
       cache_read_tokens: 20,
       cache_write_tokens: 5,
       reasoning_tokens: 10,
+      requests: 1,
     });
   });
 
@@ -28,16 +29,16 @@ describe('toLlmUsage', () => {
         inputDetails: { text: 60, audio: 30, cacheRead: 10 },
         outputDetails: { text: 20, image: 10 },
       }),
-    ).toEqual({ input_tokens: 90, output_tokens: 30, cache_read_tokens: 10 });
+    ).toEqual({ input_tokens: 90, output_tokens: 30, cache_read_tokens: 10, requests: 1 });
   });
 
-  it('never writes requests', () => {
+  it('writes one request per provider call', () => {
     const usage = toLlmUsage({ inputTokens: 12, outputTokens: 3 });
-    expect(usage).toEqual({ input_tokens: 12, output_tokens: 3 });
+    expect(usage).toEqual({ input_tokens: 12, output_tokens: 3, requests: 1 });
   });
 
-  it('returns undefined when nothing was reported', () => {
-    expect(toLlmUsage({})).toBeUndefined();
+  it('writes a request when no token counters were reported', () => {
+    expect(toLlmUsage({})).toEqual({ requests: 1 });
   });
 
   it('never subtracts below zero', () => {
@@ -48,7 +49,13 @@ describe('toLlmUsage', () => {
         inputDetails: { cacheRead: 9 },
         outputDetails: { reasoning: 4 },
       }),
-    ).toEqual({ input_tokens: 0, output_tokens: 0, cache_read_tokens: 9, reasoning_tokens: 4 });
+    ).toEqual({
+      input_tokens: 0,
+      output_tokens: 0,
+      cache_read_tokens: 9,
+      reasoning_tokens: 4,
+      requests: 1,
+    });
   });
 
   it.each([Number.NaN, -1, 1.5, Number.POSITIVE_INFINITY])(
@@ -61,7 +68,7 @@ describe('toLlmUsage', () => {
           inputDetails: { cacheRead: bad, cacheWrite: bad },
           outputDetails: { reasoning: bad },
         }),
-      ).toBeUndefined();
+      ).toEqual({ requests: 1 });
     },
   );
 });

@@ -3,7 +3,15 @@ import { ConfigurationError, type Client } from '@openaudr/audr';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AudrExporter } from '../src/index.js';
-import { ended, harness, LLM_USAGE, modelSpan, toolSpan, TRACE_ID } from './helpers.js';
+import {
+  embeddingSpan,
+  ended,
+  harness,
+  LLM_USAGE,
+  modelSpan,
+  toolSpan,
+  TRACE_ID,
+} from './helpers.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -29,8 +37,8 @@ describe('constructor', () => {
   });
 });
 
-describe('generation records', () => {
-  it('builds the expected generation record', async () => {
+describe('model records', () => {
+  it('builds the expected provider-call record', async () => {
     const h = harness({ attributionDefaults: { environment: 'staging', account_id: 'a' } });
     await h.exporter.exportTracingEvent(ended(modelSpan()));
     const [record] = await h.records();
@@ -73,20 +81,22 @@ describe('generation records', () => {
     expect(record!.resource.name).toBe('gpt-5.4-2026-01-01');
   });
 
-  it('skips silently when usage is absent', async () => {
+  it('records a request when token usage is absent', async () => {
     const h = harness();
     await h.exporter.exportTracingEvent(
       ended(modelSpan({ attributes: { provider: 'openai.chat', model: 'm' } })),
     );
-    expect(await h.records()).toHaveLength(0);
+    const [record] = await h.records();
+    expect(record!.usage.llm).toEqual({ requests: 1 });
     expect(h.logger.lines).toEqual([]);
   });
 
-  it('records failed generations that still have usage', async () => {
+  it('records failed provider calls without token usage', async () => {
     const h = harness();
     await h.exporter.exportTracingEvent(
       ended(
         modelSpan({
+          attributes: { provider: 'openai.chat', model: 'm' },
           errorInfo: { message: 'secret failure' },
         }),
       ),
@@ -94,6 +104,24 @@ describe('generation records', () => {
     const [record] = await h.records();
     expect(record!.run.error_code).toBe('MASTRA_MODEL_ERROR');
     expect(JSON.stringify(record)).not.toContain('secret');
+  });
+});
+
+describe('embedding records', () => {
+  it('records rag_embedding usage', async () => {
+    const h = harness();
+    await h.exporter.exportTracingEvent(ended(embeddingSpan()));
+    const [record] = await h.records();
+    expect(record).toMatchObject({
+      resource: {
+        provider: 'openai',
+        type: 'model',
+        name: 'text-embedding-3-small',
+        operation: 'embedding',
+        modality: 'text',
+      },
+      usage: { llm: { input_tokens: 12, requests: 1 } },
+    });
   });
 });
 
@@ -131,6 +159,24 @@ describe('tool records', () => {
     const [record] = await h.records();
     expect(record!.run.error_code).toBe('MASTRA_TOOL_ERROR');
   });
+
+  it.each(['agent-researcher', 'workflow-order-fulfillment'])(
+    'does not meter Mastra delegation tool %s',
+    async (entityName) => {
+      const h = harness();
+      await h.exporter.exportTracingEvent(ended(toolSpan({ entityName })));
+      expect(await h.records()).toHaveLength(0);
+      expect(h.logger.lines).toEqual([]);
+    },
+  );
+
+  it('does not treat an MCP tool name as a Mastra delegation', async () => {
+    const h = harness();
+    await h.exporter.exportTracingEvent(
+      ended(toolSpan({ entityName: 'agent-lookup' }, 'mcp_tool_call')),
+    );
+    expect(await h.records()).toHaveLength(1);
+  });
 });
 
 describe('ignored events', () => {
@@ -140,6 +186,7 @@ describe('ignored events', () => {
       type: 'span_started' as never,
       exportedSpan: modelSpan(),
     });
+    await h.exporter.exportTracingEvent(ended(modelSpan({ type: 'model_generation' as never })));
     await h.exporter.exportTracingEvent(ended(modelSpan({ type: 'model_step' as never })));
     expect(await h.records()).toHaveLength(0);
   });
@@ -187,7 +234,8 @@ describe('lifecycle', () => {
       config: {
         name: 'x',
         serviceName: 'y',
-        excludeSpanTypes: ['model_generation'],
+        includeInternalSpans: true,
+        excludeSpanTypes: ['model_inference'],
       } as ObservabilityInstanceConfig,
     });
     expect(h.logger.warnings[0]).toMatch(/CONFIG_DROPS_SPANS.*setting=excludeSpanTypes/);
@@ -199,10 +247,45 @@ describe('lifecycle', () => {
       config: {
         name: 'x',
         serviceName: 'y',
+        includeInternalSpans: true,
         sampling: { type: 'never' },
       } as ObservabilityInstanceConfig,
     });
     expect(h.logger.warnings[0]).toMatch(/CONFIG_DROPS_SPANS.*setting=sampling/);
+  });
+
+  it('init warns when internal metered spans are hidden', () => {
+    const h = harness();
+    h.exporter.init({
+      config: {
+        name: 'x',
+        serviceName: 'y',
+      },
+    });
+    expect(h.logger.warnings).toEqual([
+      '@openaudr/audr-adapter-mastra: CONFIG_DROPS_SPANS (setting=includeInternalSpans)',
+    ]);
+  });
+
+  it("uses Mastra's logger when no logger option was supplied", async () => {
+    const h = harness({ logger: undefined });
+    const warnings: string[] = [];
+    h.exporter.__setLogger({ warn: (message: string) => warnings.push(message) } as never);
+    await h.exporter.exportTracingEvent(
+      ended(modelSpan({ attributes: { model: 'gpt-5.4', usage: {} } })),
+    );
+    expect(warnings[0]).toMatch(/RESOURCE_UNRESOLVED/);
+  });
+
+  it("does not replace the explicit logger with Mastra's logger", async () => {
+    const h = harness();
+    const warnings: string[] = [];
+    h.exporter.__setLogger({ warn: (message: string) => warnings.push(message) } as never);
+    await h.exporter.exportTracingEvent(
+      ended(modelSpan({ attributes: { model: 'gpt-5.4', usage: {} } })),
+    );
+    expect(h.logger.warnings[0]).toMatch(/RESOURCE_UNRESOLVED/);
+    expect(warnings).toEqual([]);
   });
 
   it('keeps a short caller-supplied traceId as run_id but not as trace_id', async () => {

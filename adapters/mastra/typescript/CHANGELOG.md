@@ -10,8 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Initial release: `AudrExporter`, a Mastra `ObservabilityExporter` that submits one AUDR
-  record per `model_generation` span and per `tool_call` / `mcp_tool_call` span to a
-  host-owned `@openaudr/audr` `Client`. Attribution is read from `metadata.audr` over
-  configurable defaults. Diagnostics go to an optional `logger`, carry stable codes and never
-  include record values. `@mastra/core`, `@mastra/observability` and `@openaudr/audr` are
-  peer dependencies.
+  record per `model_inference`, `rag_embedding`, `tool_call` and `mcp_tool_call` span to a
+  host-owned `@openaudr/audr` `Client`. Model and embedding records include `requests: 1`;
+  Mastra agent and workflow delegation tool spans are excluded. Attribution is read from
+  `metadata.audr` over configurable defaults. Diagnostics use an explicit logger or Mastra's
+  injected logger, carry stable codes and never include record values. `@mastra/core`,
+  `@mastra/observability` and `@openaudr/audr` are peer dependencies.

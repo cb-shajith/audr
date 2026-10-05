@@ -72,7 +72,13 @@ const agent = new Agent({
 const mastra = new Mastra({
   agents: { agent },
   observability: new Observability({
-    configs: { default: { serviceName: 'support-bot', exporters: [exporter] } },
+    configs: {
+      default: {
+        serviceName: 'support-bot',
+        exporters: [exporter],
+        includeInternalSpans: true,
+      },
+    },
   }),
 });
 
@@ -94,4 +100,4 @@ for (const record of records) {
   console.log(`${record.resource.operation} ${record.resource.name}`, record.usage);
 }
 const operations = records.map((record) => record.resource.operation).sort();
-if (operations.join() !== 'generation,tool_execution') process.exitCode = 1;
+if (operations.join() !== 'generation,generation,tool_execution') process.exitCode = 1;

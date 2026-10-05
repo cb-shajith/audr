@@ -9,9 +9,9 @@ covers changes to the package itself.
 ## What this is
 
 `adapters/mastra/typescript` is the `@openaudr/audr-adapter-mastra` npm package: a Mastra
-`ObservabilityExporter` that turns ended `model_generation`, `tool_call` and `mcp_tool_call`
-spans into attributed AUDR records for an `@openaudr/audr` `Client` the host application
-owns.
+`ObservabilityExporter` that turns ended `model_inference`, `rag_embedding`, `tool_call`
+and `mcp_tool_call` spans into attributed AUDR records for an `@openaudr/audr` `Client`
+the host application owns.
 
 ## Layout
 
@@ -31,8 +31,10 @@ owns.
 1. `@mastra/*` packages are peer dependencies. Import only their types (`import type`); ESLint
    rejects a value import in `src/`, and `tests/public-api.test.ts` checks the emitted
    JavaScript. This package imports no `node:` modules in `src/`.
-2. Meter only `model_generation`, `tool_call` and `mcp_tool_call` on `span_ended`. Ignore
-   `model_step`, `model_chunk` and every other span type so usage is not double-counted.
+2. Meter only `model_inference`, `rag_embedding`, `tool_call` and `mcp_tool_call` on
+   `span_ended`. Ignore `model_generation`, `model_step`, `model_chunk` and every other
+   span type so usage is not double-counted. Tool names beginning `agent-` or `workflow-`
+   are Mastra delegations and are not separate tool usage.
 3. Read no payloads. Never read prompts, instructions, messages, content, tool inputs, tool
    outputs or error messages. `tests/privacy.test.ts` plants a sentinel in every payload
    position.
@@ -43,8 +45,9 @@ owns.
 6. Diagnostics go through `Diagnostics` with a `DiagnosticCode` and the fixed field set in
    `src/diagnostics.ts`. Add a code for every new diagnostic. Never log a record value, an id,
    a model name, a tool name or an error message; error class names only.
-7. Never write `requests`, `cost` or `totalTokens`. `input_tokens` excludes cache reads and
-   writes; `output_tokens` excludes reasoning.
+7. Write `requests: 1` for each model inference and embedding call. Never write `cost` or
+   `totalTokens`. `input_tokens` excludes cache reads and writes; `output_tokens` excludes
+   reasoning.
 8. A behaviour change updates its one home: `README.md` for installation, usage and
    attribution, `docs/reference.md` for everything else. Neither repeats the other's
    detail. A new diagnostic code gets a row in the diagnostics table of `docs/reference.md`.
@@ -73,5 +76,6 @@ make isolation   # build, then publint --strict and attw
 make verify      # lint + test + examples + isolation
 ```
 
-`make isolation` does not run the core's `scripts/verify-package.ts`: this package's peer
-dependencies are intended.
+`tools/verify-npm-package.mjs` installs the packed adapter and core with Mastra into an
+empty project and runs `scripts/package-smoke.mjs`, which meters one call. It does not
+require an exact installed set, because this package's peer dependencies are intended.

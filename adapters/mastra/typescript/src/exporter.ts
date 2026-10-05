@@ -1,10 +1,12 @@
 import type {
   AnyExportedSpan,
   InitExporterOptions,
-  ModelGenerationAttributes,
+  ModelInferenceAttributes,
   ObservabilityExporter,
+  RagEmbeddingAttributes,
   TracingEvent,
 } from '@mastra/core/observability';
+import type { IMastraLogger } from '@mastra/core/logger';
 import {
   type Attribution,
   type Client,
@@ -27,8 +29,11 @@ import {
   toLlmUsage,
 } from './mapping.js';
 
-const METERED_SPAN_TYPES: ReadonlySet<unknown> = new Set([
-  'model_generation',
+type MeteredSpanType = 'model_inference' | 'rag_embedding' | 'tool_call' | 'mcp_tool_call';
+
+const METERED_SPAN_TYPES: ReadonlySet<string> = new Set<MeteredSpanType>([
+  'model_inference',
+  'rag_embedding',
   'tool_call',
   'mcp_tool_call',
 ]);
@@ -53,15 +58,16 @@ export interface AudrExporterOptions {
 }
 
 /**
- * Mastra observability exporter that turns ended `model_generation`, `tool_call` and
- * `mcp_tool_call` spans into AUDR records for the host's `client`.
+ * Mastra observability exporter that turns ended `model_inference`, `rag_embedding`,
+ * `tool_call` and `mcp_tool_call` spans into AUDR records for the host's `client`.
  */
 export class AudrExporter implements ObservabilityExporter {
   readonly name = 'audr';
 
   readonly #client: Client;
   readonly #defaults: Attribution | undefined;
-  readonly #diagnostics: Diagnostics;
+  readonly #hasExplicitLogger: boolean;
+  #diagnostics: Diagnostics;
 
   constructor(options: AudrExporterOptions) {
     const client = options.client as Partial<Client> | undefined;
@@ -73,7 +79,13 @@ export class AudrExporter implements ObservabilityExporter {
     }
     this.#client = options.client;
     this.#defaults = options.attributionDefaults;
+    this.#hasExplicitLogger = options.logger !== undefined;
     this.#diagnostics = new Diagnostics(options.logger ?? SILENT);
+  }
+
+  /** Uses Mastra's logger unless the host supplied the adapter-specific `logger` option. */
+  __setLogger(logger: IMastraLogger): void {
+    if (!this.#hasExplicitLogger) this.#diagnostics = new Diagnostics(logger);
   }
 
   /** Warns when the observability config would keep metered spans from reaching the exporter. */
@@ -84,6 +96,9 @@ export class AudrExporter implements ObservabilityExporter {
     }
     if (config?.excludeSpanTypes?.some((type) => METERED_SPAN_TYPES.has(type))) {
       this.#diagnostics.warn('CONFIG_DROPS_SPANS', { setting: 'excludeSpanTypes' });
+    }
+    if (config?.includeInternalSpans !== true) {
+      this.#diagnostics.warn('CONFIG_DROPS_SPANS', { setting: 'includeInternalSpans' });
     }
   }
 
@@ -110,8 +125,8 @@ export class AudrExporter implements ObservabilityExporter {
 
   #record(span: AnyExportedSpan): void {
     const spanType = span.type as string;
-    if (!METERED_SPAN_TYPES.has(spanType)) return;
-    const metered = spanType === 'model_generation' ? this.#generation(span) : this.#tool(span);
+    if (!isMeteredSpanType(spanType)) return;
+    const metered = this.#meter(span, spanType);
     if (metered === undefined) return;
 
     const resolution = resolveAttribution(span.metadata, this.#defaults);
@@ -144,35 +159,74 @@ export class AudrExporter implements ObservabilityExporter {
     }
   }
 
-  /** A generation with no reported usage is skipped silently; Mastra had nothing to meter. */
-  #generation(span: AnyExportedSpan): Metered | undefined {
-    const attributes = span.attributes as ModelGenerationAttributes | undefined;
-    const llm = attributes?.usage === undefined ? undefined : toLlmUsage(attributes.usage);
-    if (llm === undefined) return undefined;
+  #meter(span: AnyExportedSpan, spanType: MeteredSpanType): Metered | undefined {
+    switch (spanType) {
+      case 'model_inference':
+        return this.#model(span);
+      case 'rag_embedding':
+        return this.#embedding(span);
+      case 'tool_call':
+      case 'mcp_tool_call':
+        return this.#tool(span, spanType);
+      default: {
+        const exhaustive: never = spanType;
+        return exhaustive;
+      }
+    }
+  }
 
+  #model(span: AnyExportedSpan): Metered | undefined {
+    const attributes = span.attributes as ModelInferenceAttributes | undefined;
     const provider = providerSlug(attributes?.provider);
     const name = nonEmpty(attributes?.responseModel) ?? nonEmpty(attributes?.model);
     if (provider === undefined || name === undefined) {
-      this.#diagnostics.warn('RESOURCE_UNRESOLVED', { span: 'model_generation' });
+      this.#diagnostics.warn('RESOURCE_UNRESOLVED', { span: 'model_inference' });
       return undefined;
     }
     return {
       resource: { provider, type: 'model', name, operation: 'generation', modality: 'text' },
-      usage: { llm },
+      usage: { llm: toLlmUsage(attributes?.usage ?? {}) },
       errorCode: MODEL_ERROR_CODE,
     };
   }
 
-  #tool(span: AnyExportedSpan): Metered | undefined {
+  #embedding(span: AnyExportedSpan): Metered | undefined {
+    const attributes = span.attributes as RagEmbeddingAttributes | undefined;
+    const provider = providerSlug(attributes?.provider);
+    const name = nonEmpty(attributes?.model);
+    if (provider === undefined || name === undefined) {
+      this.#diagnostics.warn('RESOURCE_UNRESOLVED', { span: 'rag_embedding' });
+      return undefined;
+    }
+    return {
+      resource: { provider, type: 'model', name, operation: 'embedding', modality: 'text' },
+      usage: { llm: toLlmUsage(attributes?.usage ?? {}) },
+      errorCode: MODEL_ERROR_CODE,
+    };
+  }
+
+  #tool(
+    span: AnyExportedSpan,
+    spanType: Extract<MeteredSpanType, 'tool_call' | 'mcp_tool_call'>,
+  ): Metered | undefined {
     const name = nonEmpty(span.entityName);
     if (name === undefined) {
       this.#diagnostics.warn('RESOURCE_UNRESOLVED', { span: span.type });
       return undefined;
     }
+    if (spanType === 'tool_call' && isDelegationTool(name)) return undefined;
     return {
       resource: { provider: TOOL_PROVIDER, type: 'tool', name, operation: 'tool_execution' },
       usage: { tool: { type: 'invocation', call_count: 1 } },
       errorCode: TOOL_ERROR_CODE,
     };
   }
+}
+
+function isMeteredSpanType(spanType: string): spanType is MeteredSpanType {
+  return METERED_SPAN_TYPES.has(spanType);
+}
+
+function isDelegationTool(name: string): boolean {
+  return name.startsWith('agent-') || name.startsWith('workflow-');
 }

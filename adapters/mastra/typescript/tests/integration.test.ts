@@ -85,14 +85,14 @@ function stack(observabilityConfig: Record<string, unknown> = {}): Harness & { a
 }
 
 describe('agent.generate', () => {
-  it('records one generation summed across steps and one tool call, sharing the trace id', async () => {
+  it('records each provider call and the tool call, sharing the trace id', async () => {
     const { agent, records } = stack();
     const result = await agent.generate('Where is order 42?', { maxSteps: 5 });
     const all = await records();
     const generations = all.filter((r) => r.resource.operation === 'generation');
     const tools = all.filter((r) => r.resource.operation === 'tool_execution');
 
-    expect(generations).toHaveLength(1);
+    expect(generations).toHaveLength(2);
     expect(tools).toHaveLength(1);
     expect(result.traceId).toMatch(/^[0-9a-f]{32}$/);
     expect(generations[0]!.run.run_id).toBe(result.traceId);
@@ -104,12 +104,15 @@ describe('agent.generate', () => {
       operation: 'generation',
       modality: 'text',
     });
-    expect(generations[0]!.usage.llm).toEqual({
-      input_tokens: 200,
-      output_tokens: 80,
-      cache_read_tokens: 40,
-      reasoning_tokens: 20,
-    });
+    for (const generation of generations) {
+      expect(generation.usage.llm).toEqual({
+        input_tokens: 100,
+        output_tokens: 40,
+        cache_read_tokens: 20,
+        reasoning_tokens: 10,
+        requests: 1,
+      });
+    }
     expect(tools[0]!.resource.name).toBe('lookup');
   });
 
@@ -120,7 +123,7 @@ describe('agent.generate', () => {
       tracingOptions: { metadata: { audr: { account_id: 'acct_ctx' } } },
     });
     const all = await records();
-    expect(all).toHaveLength(2);
+    expect(all).toHaveLength(3);
     for (const record of all) {
       expect(record.attribution).toEqual({ environment: 'test', account_id: 'acct_ctx' });
     }
@@ -132,7 +135,7 @@ describe('agent.generate', () => {
     requestContext.set('audr', { subscription_id: 'sub_99' });
     await agent.generate('hi', { maxSteps: 5, requestContext });
     const all = await records();
-    expect(all).toHaveLength(2);
+    expect(all).toHaveLength(3);
     for (const record of all) {
       expect(record.attribution).toEqual({ environment: 'test', subscription_id: 'sub_99' });
     }

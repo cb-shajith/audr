@@ -68,8 +68,8 @@ export function modelSpan(
   return {
     id: SPAN,
     traceId: TRACE,
-    name: 'generation',
-    type: 'model_generation',
+    name: 'inference',
+    type: 'model_inference',
     startTime: start,
     endTime: end,
     isEvent: false,
@@ -83,6 +83,32 @@ export function modelSpan(
         inputDetails: { text: 100, cacheRead: 20 },
         outputDetails: { text: 40, reasoning: 10 },
       },
+    },
+    metadata: {},
+    ...overrides,
+  } as AnyExportedSpan;
+}
+
+export function embeddingSpan(
+  overrides: Partial<AnyExportedSpan> & {
+    attributes?: Record<string, unknown>;
+  } = {},
+): AnyExportedSpan {
+  const start = new Date('2026-01-15T10:00:00.000Z');
+  const end = new Date('2026-01-15T10:00:00.100Z');
+  return {
+    id: 'e'.repeat(16),
+    traceId: TRACE,
+    name: 'embedding',
+    type: 'rag_embedding',
+    startTime: start,
+    endTime: end,
+    isEvent: false,
+    isRootSpan: false,
+    attributes: {
+      provider: 'openai.embeddings',
+      model: 'text-embedding-3-small',
+      usage: { inputTokens: 12 },
     },
     metadata: {},
     ...overrides,
@@ -121,6 +147,7 @@ export const LLM_USAGE = {
   output_tokens: 40,
   cache_read_tokens: 20,
   reasoning_tokens: 10,
+  requests: 1,
 };
 
 export const TRACE_ID = TRACE;

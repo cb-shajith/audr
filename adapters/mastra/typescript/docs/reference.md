@@ -11,7 +11,7 @@ are in the [README](../README.md).
 | --- | --- | --- | --- |
 | `client` | `Client` from `@openaudr/audr` | Required | Receives every record through `client.record()`. The exporter's `flush()` calls `client.flush()`; its `shutdown()` leaves the client open. |
 | `attributionDefaults` | `Attribution` | None | Applied field by field under each span's `metadata.audr`; `labels` merge by key. Omit `environment` to require it on every call. |
-| `logger` | `{ warn(message), error(message) }` | Discards diagnostics | Receives [diagnostics](#diagnostics). Pass `console` to print them. |
+| `logger` | `{ warn(message), error(message) }` | Mastra's logger after registration; otherwise silent | Receives [diagnostics](#diagnostics). An explicit logger is not replaced when Mastra calls `__setLogger`. |
 
 `AudrExporter` throws `ConfigurationError` when `client` has no `record()` or no `flush()`
 method. Nothing else in the package throws.
@@ -20,11 +20,12 @@ method. Nothing else in the package throws.
 
 | Mastra span (`span_ended`) | `resource.operation` | `resource.type` | `usage` |
 | --- | --- | --- | --- |
-| `model_generation` | `generation` | `model` | `llm` |
+| `model_inference` | `generation` | `model` | `llm` |
+| `rag_embedding` | `embedding` | `model` | `llm` |
 | `tool_call`, `mcp_tool_call` | `tool_execution` | `tool` | `tool: { type: 'invocation', call_count: 1 }` |
 
-Mastra rolls the usage of every step into `model_generation`, so `model_step` and
-`model_chunk` spans are ignored; metering them would count the same tokens twice.
+Each `model_inference` is one call to the model provider. The aggregate `model_generation`,
+duplicate `model_step` and child `model_chunk` spans are ignored.
 
 ### Tokens
 
@@ -38,19 +39,24 @@ Mastra rolls the usage of every step into `model_generation`, so `model_step` an
 | `cache_write_tokens` | `inputDetails.cacheWrite` |
 | `output_tokens` | `outputTokens` minus `outputDetails.reasoning` |
 | `reasoning_tokens` | `outputDetails.reasoning` |
+| `requests` | `1` for each `model_inference` or `rag_embedding` |
 
 Audio and image tokens stay inside `input_tokens` and `output_tokens`, because AUDR has no
-separate counter for them. A counter Mastra did not report is omitted, not zeroed, and a
-generation that reports no counter at all produces no record. `requests`, `totalTokens` and
-cost are never written; Mastra's estimated cost is not read.
+separate counter for them. A counter Mastra did not report is omitted, not zeroed. A
+provider call that reports no token counters still produces a record with `requests: 1`.
+`totalTokens` and cost are never written; Mastra's estimated cost is not read.
 
 ### Resource
 
 - **Model calls.** `resource.name` is `responseModel` when set, otherwise `model`.
   `resource.modality` is `text`. `resource.provider` follows the
   [provider slugs](#provider-slugs) rules.
+- **Embeddings.** `resource.name` is `model`, `resource.operation` is `embedding` and
+  `resource.modality` is `text`.
 - **Tools.** `resource.provider` is `self-hosted` and `resource.name` is the tool name
-  (`entityName`).
+  (`entityName`). On `tool_call` spans, names beginning `agent-` or `workflow-` are Mastra
+  delegations and do not produce an additional tool record; their child model and tool spans
+  are metered instead.
 
 A span with no valid provider slug, no model name or no tool name is skipped with
 `RESOURCE_UNRESOLVED`.
@@ -63,7 +69,7 @@ A span with no valid provider slug, no model name or no tool name is skipped wit
 | `run.trace_id` | The same `traceId` when it is 32 lowercase hexadecimal digits, the W3C trace id form |
 | `run.span_id` | The span id |
 | `run.parent_span_id` | The parent span id, when the span has one |
-| `run.error_code` | `MASTRA_TOOL_ERROR` on a failed tool call; `MASTRA_MODEL_ERROR` on a failed generation that still reported usage |
+| `run.error_code` | `MASTRA_TOOL_ERROR` on a failed tool call; `MASTRA_MODEL_ERROR` on a failed model inference or embedding |
 
 `run.run_id` must be 8 to 64 characters, so the `Client` rejects the records of a call whose
 caller-supplied `tracingOptions.traceId` is shorter than 8 characters. An error itself is
@@ -97,7 +103,8 @@ The table matches the Vercel AI SDK adapter's, so records from both adapters joi
 
 ## Diagnostics
 
-The adapter logs nothing unless `logger` is given. Each message has the form
+The adapter uses an explicit `logger`, otherwise Mastra supplies its logger through
+`__setLogger` when the exporter is registered. Before registration it is silent. Each message has the form
 `@openaudr/audr-adapter-mastra: <CODE> (<key>=<value>, ...)` and carries span types, setting
 names, submit outcomes, issue paths and error class names only, never a record value or an
 error message. The `DiagnosticCode` type lists every code.
@@ -105,9 +112,9 @@ error message. The `DiagnosticCode` type lists every code.
 | Code | Level | Logged when | Action |
 | --- | --- | --- | --- |
 | `ATTRIBUTION_UNRESOLVED` | warn | A metered span has no `environment` in its merged attribution; it is not metered | Set `environment` in `attributionDefaults` or `metadata.audr` |
-| `RESOURCE_UNRESOLVED` | warn | A generation has no valid provider slug or model name, or a tool span has no name; the record is skipped | Check the model's provider id against [provider slugs](#provider-slugs) |
+| `RESOURCE_UNRESOLVED` | warn | A model or embedding span has no valid provider slug or model name, or a tool span has no name; the record is skipped | Check the model's provider id against [provider slugs](#provider-slugs) |
 | `RECORD_NOT_QUEUED` | warn | The `Client` rejects or drops a record; `issues` lists each `<code>@<path>` | Fix the attribution the issue path names, or check that the client is running |
-| `CONFIG_DROPS_SPANS` | warn | At registration, `sampling.type` is not `always` or `excludeSpanTypes` lists a metered span type; `setting` names which | Change the observability configuration |
+| `CONFIG_DROPS_SPANS` | warn | At registration, `sampling.type` is not `always`, `includeInternalSpans` is not `true`, or `excludeSpanTypes` lists a metered span type; `setting` names which | Change the observability configuration |
 | `EXPORT_FAILED` | error | An exception while exporting a span or flushing the client; Mastra continues | Report it as a bug, with the error class |
 
 An error class is one of the built-in `Error` subclasses, `Error`, the `typeof` of a thrown
@@ -116,15 +123,14 @@ writable and may carry prompt or record values.
 
 ## Not metered
 
-- `model_step`, `model_chunk`, and every span type other than `model_generation`,
-  `tool_call` and `mcp_tool_call`.
-- Mastra internal model calls, whose usage Mastra rolls into `internalUsage` on an ancestor
-  span, unless observability is configured with `includeInternalSpans: true`.
-- Embedding calls (`rag_embedding` spans).
+- `model_generation`, `model_step`, `model_chunk`, and every span type other than
+  `model_inference`, `rag_embedding`, `tool_call` and `mcp_tool_call`.
+- Mastra internal spans unless observability is configured with `includeInternalSpans: true`.
+- Mastra agent and workflow delegation tool spans, identified by their `agent-` and
+  `workflow-` name prefixes. Their child operations remain metered.
 - Provider-executed tools, and client-side tools Mastra does not surface as `tool_call` or
   `mcp_tool_call` spans.
 - Spans dropped by sampling, `excludeSpanTypes` or a `spanFilter`.
-- Generations that end without reported token usage.
 
 ## Operational bounds
 

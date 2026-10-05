@@ -32,28 +32,25 @@ const MASTRA_TYPE_ONLY = [
   },
 ];
 
-export default defineConfig(
-  workspaceConfig(import.meta.dirname),
-  {
-    files: ['src/**/*.ts'],
-    rules: {
-      '@typescript-eslint/no-restricted-imports': [
-        'error',
-        {
-          paths: MASTRA_TYPE_ONLY,
-          patterns: [
-            {
-              regex: '^@mastra/',
-              message: 'Import only types from @mastra/* packages.',
-            },
-            {
-              regex: '^node:',
-              message: 'This package must not import node: modules.',
-            },
-          ],
-        },
-      ],
-      'no-restricted-globals': ['error', ...NODE_GLOBALS],
-    },
+export default defineConfig(workspaceConfig(import.meta.dirname), {
+  files: ['src/**/*.ts'],
+  rules: {
+    '@typescript-eslint/no-restricted-imports': [
+      'error',
+      {
+        paths: MASTRA_TYPE_ONLY,
+        patterns: [
+          {
+            regex: '^@mastra/',
+            message: 'Import only types from @mastra/* packages.',
+          },
+          {
+            regex: '^node:',
+            message: 'This package must not import node: modules.',
+          },
+        ],
+      },
+    ],
+    'no-restricted-globals': ['error', ...NODE_GLOBALS],
   },
-);
+});
