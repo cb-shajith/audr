@@ -1,7 +1,8 @@
 /**
  * Instrument an OpenRouter client once and send a chat completion. The result does not
- * name the vendor that served the call, so the adapter asks `generations.getGeneration()`
- * through the same client. `fetch` is answered locally: no network, no credentials.
+ * name the vendor that served the call, so the adapter, opted in to the lookup, asks
+ * `generations.getGeneration()` through the same client. `fetch` is answered locally: no
+ * network, no credentials.
  *
  *   node examples/chat.ts
  */
@@ -19,6 +20,8 @@ const client = new Client(sink);
 const openrouter = instrumentOpenRouter(new OpenRouter({ apiKey: 'sk-or-example' }), {
   client,
   attributionDefaults: { environment: 'production', account_id: 'acct_42' },
+  // Opt in to the lookup, for at most 2 s per call; without it the vendor stays `openrouter`.
+  lookup: { maxWaitMs: 2000 },
 });
 
 const completion = await openrouter.chat.send({

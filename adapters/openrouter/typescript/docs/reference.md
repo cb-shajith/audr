@@ -13,7 +13,7 @@ choice between router metadata and a lookup, and attribution are in the
 | `client` | `Client` from `@openaudr/audr` | Required | Receives every record through `client.record()`. The adapter never creates, flushes or shuts it down. |
 | `attributionDefaults` | `Attribution` | None | Applied field by field under each `withAudr` scope; `labels` merge by key. Copied when instrumenting, so later changes to the object have no effect. Omit `environment` to require it in every scope. |
 | `mapResource` | `({ model, vendor }) => { provider, name } \| null \| undefined` | None | Overrides `resource.provider` and `resource.name`. Returning `null` or `undefined` keeps the default. A throw skips the record. |
-| `lookup` | `{ maxWaitMs, initialDelayMs, maxDelayMs }` | `5000`, `250`, `1000` | Bounds the [lookup](#lookup). |
+| `lookup` | `{ maxWaitMs, initialDelayMs, maxDelayMs }` | `0` (off), `250`, `1000` | Opts in to, and bounds, the [lookup](#lookup). |
 | `logger` | `{ warn(message), error(message) }` | Discards diagnostics | Receives [diagnostics](#diagnostics). Pass `console` to print them. |
 
 `instrumentOpenRouter` throws `ConfigurationError` when `client` has no `record()` method or
@@ -28,27 +28,35 @@ returns, including a rejection or exception. A `context` that cannot be read is 
 ## Lookup
 
 A Chat or Responses result carries `openrouterMetadata` only when the request sent
-`xOpenRouterMetadata: 'enabled'`; an Embeddings result never does. When the result does not
-name the vendor that served the call, the adapter calls `generations.getGeneration({ id })`
-on the same native client, so it uses the same key, base URL and HTTP client as the host.
-The SDK's own retries are turned off for the lookup, including any `retryConfig` the client
-was given: the adapter retries on its own schedule, within `maxWaitMs`.
+`xOpenRouterMetadata: 'enabled'`; an Embeddings result never does. **The lookup is off by
+default**, because it holds back every call that needs it for up to `maxWaitMs` and the
+statistics endpoint it calls is a separate service: while that endpoint is slow or down,
+every such call would wait out the whole budget. Sending `xOpenRouterMetadata: 'enabled'` is
+the zero-cost way to name the vendor, since the answer arrives on the result itself.
 
-The lookup also runs when the result leaves out whether the call was BYOK, or, for a BYOK
-call, the provider's own charge, because the cost cannot be completed without it.
+Setting `lookup.maxWaitMs` above zero opts in. When the result then does not name the vendor
+that served the call, the adapter calls `generations.getGeneration({ id })` on the same
+native client, so it uses the same key, base URL and HTTP client as the host. The SDK's own
+retries are turned off for the lookup, including any `retryConfig` the client was given: the
+adapter retries on its own schedule, within `maxWaitMs`.
+
+An enabled lookup also runs when the result leaves out whether the call was BYOK, or, for a
+BYOK call, the provider's own charge, because the cost cannot be completed without it.
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| `maxWaitMs` | `5000` | The most time one lookup may take, every attempt and wait included. `0` disables the lookup. |
+| `maxWaitMs` | `0` | The most time one lookup may take, every attempt and wait included. `0`, the default, disables the lookup. |
 | `initialDelayMs` | `250` | The wait before the first retry. It doubles after each retry. |
 | `maxDelayMs` | `1000` | The longest single wait. |
 
-A value that is not a finite number of at least zero is replaced by its default.
+A value that is not a finite number of at least zero is replaced by its default, so an
+invalid `maxWaitMs` leaves the lookup off.
 
 - **It delays the call.** The record is submitted after the lookup, and the facade's promise
   resolves after the record is submitted. For a stream, the terminal event is delivered
   after the lookup. The delay is at most `maxWaitMs` and is zero when router metadata names
-  the vendor.
+  the vendor. Choose a budget that the application can afford on every call when the
+  endpoint is unavailable.
 - **It does not change the timing.** `timing.event_time` and `timing.duration_ms` are taken
   when the primary call completes, before the lookup.
 - **What is retried.** OpenRouter publishes a generation's statistics shortly after the
@@ -68,9 +76,10 @@ A value that is not a finite number of at least zero is replaced by its default.
   `resource.provider` `openrouter` (`PROVIDER_UNRESOLVED`). When only the BYOK cost is
   incomplete, the record is written without a cost (`BYOK_COST_INCOMPLETE`).
 
-To skip the lookup altogether, set `lookup.maxWaitMs` to `0` and send
-`xOpenRouterMetadata: 'enabled'` on every Chat and Responses request. Embeddings then name
-no vendor, so they are recorded as `openrouter` unless `mapResource` names one:
+With the default `maxWaitMs` of `0`, send `xOpenRouterMetadata: 'enabled'` on every Chat and
+Responses request: the vendor, and the BYOK status the router metadata carries, arrive on
+the result and no request is added. Embeddings never carry router metadata, so they are recorded as
+`openrouter` unless `mapResource` names a vendor or the lookup is enabled:
 
 ```ts
 import { instrumentOpenRouter } from '@openaudr/audr-adapter-openrouter';
@@ -84,7 +93,6 @@ const openrouter = instrumentOpenRouter(
   {
     client,
     attributionDefaults: { environment: 'production', account_id: 'acct_42' },
-    lookup: { maxWaitMs: 0 },
     // Embeddings results never name the vendor: take it from the model's prefix.
     mapResource: ({ model, vendor }) =>
       vendor === undefined && model !== undefined
@@ -182,7 +190,7 @@ sees it:
 
 | Stream | The frame that is recorded |
 | --- | --- |
-| `chat.send()` with `stream: true` | The chunk that carries `usage`. Router metadata may arrive on any chunk; the latest one seen is used when the usage chunk has none. |
+| `chat.send()` with `stream: true` | The chunk that carries `usage`. Router metadata may arrive on any chunk; the latest one seen is used when the usage chunk has none. When that chunk, or an earlier one, carried an `error`, the record has an [error code](#identifiers). |
 | `responses.send()` with `stream: true` | `response.completed`, `response.failed` or `response.incomplete`. The latter two are recorded when their `response` carries `usage`, with an [error code](#identifiers). |
 
 A stream that ends without a record produces nothing and logs one `STREAM_INCOMPLETE`
@@ -191,7 +199,7 @@ warning with a `reason`:
 | `reason` | The stream ended because |
 | --- | --- |
 | `no_usage` | A Responses terminal event arrived without `usage` |
-| `error_frame` | A frame carried an error and no usage chunk followed (an `error` event, or a Chat chunk with `error`) |
+| `error_frame` | A frame carried an error and no usage chunk followed, so nothing could be recorded (an `error` event, or a Chat chunk with `error`) |
 | `ended` | The body ended without a frame that carries `usage` |
 | `failed` | Reading the stream threw |
 | `abandoned` | The loop stopped early |
@@ -235,6 +243,12 @@ includes cache reads and writes, and its completion (or output) count includes r
 | Not BYOK | `usage.cost`, which is what OpenRouter charged. Any upstream figure is ignored. |
 | BYOK | `usage.cost` plus the provider's own charge, `usage.costDetails.upstreamInferenceCost` or, if the usage lacks it, the lookup's `upstreamInferenceCost` |
 | BYOK with either part unknown, or BYOK status unknown | None: the record is written without `cost`, and `BYOK_COST_INCOMPLETE` is logged |
+
+OpenRouter documents `usage.cost` as "cost in credits". Its credits are denominated in US
+dollars (one credit is one dollar: the base currency of OpenRouter's credit system is USD and
+every price in its API is in dollars), so the amount is written as `total_cost` without
+conversion. `usage.costDetails.upstreamInferenceCost` is the provider's own charge in the
+same currency.
 
 `usage.costDetails.serverToolCost` is already part of OpenRouter's charge and is never added.
 A call that reports no `usage.cost` and is not BYOK carries no `cost`, silently. The
@@ -304,7 +318,7 @@ with `MODEL_UNREPORTED`.
 | `run.parent_span_id` | The scope's `parent_span_id` |
 | `run.name` | The scope's `name` |
 | `run.run_type` | `agent_run` inside a run scope; `single_call` otherwise |
-| `run.error_code` | `OPENROUTER_RESPONSE_FAILED` (`RESPONSE_FAILED_CODE`) or `OPENROUTER_RESPONSE_INCOMPLETE` (`RESPONSE_INCOMPLETE_CODE`), for a Responses result with that `status`, or a `response.failed` or `response.incomplete` event, that carries usage |
+| `run.error_code` | `OPENROUTER_RESPONSE_FAILED` (`RESPONSE_FAILED_CODE`) or `OPENROUTER_RESPONSE_INCOMPLETE` (`RESPONSE_INCOMPLETE_CODE`), for a Responses result with that `status`, or a `response.failed` or `response.incomplete` event, that carries usage; `OPENROUTER_CHAT_FAILED` (`CHAT_FAILED_CODE`), for a Chat stream in which a chunk carried an `error` (OpenRouter reports a failure after the HTTP 200 this way) and the usage chunk still arrived |
 
 `run.step`, `run.trace_id` and `run.outcome` are never written. A run can span several
 scopes, processes and concurrent calls, so a call's position is undefined; order records by
@@ -329,7 +343,7 @@ name or an error message. The `DiagnosticCode` type lists every code.
 | --- | --- | --- | --- |
 | `ATTRIBUTION_UNRESOLVED` | warn | A call starts with no `environment` in its attribution; it is not metered | Set `environment` in `attributionDefaults` or the `withAudr` scope |
 | `PROVIDER_UNRESOLVED` | warn | Neither the result, the lookup nor `mapResource` names a vendor; the record is written with `resource.provider` `openrouter` | Send `xOpenRouterMetadata: 'enabled'`, raise the lookup budget, or return a provider from `mapResource` |
-| `LOOKUP_FAILED` | warn | The [lookup](#lookup) produced nothing, with a `reason`: `disabled` (`maxWaitMs: 0`), `no_id` (the result has no id that `getGeneration` accepts), `rejected` (a failure that waiting cannot fix) or `exhausted` (the budget ran out) | Check the key's access to `generations`, or raise `maxWaitMs` |
+| `LOOKUP_FAILED` | warn | The [lookup](#lookup) produced nothing, with a `reason`: `disabled` (`maxWaitMs: 0`), `no_id` (the result has no id that `getGeneration` accepts), `rejected` (a failure that waiting cannot fix) or `exhausted` (the budget ran out) | Send `xOpenRouterMetadata: 'enabled'`, or enable the lookup with `maxWaitMs` and check the key's access to `generations` |
 | `BYOK_COST_INCOMPLETE` | warn | A call's cost is withheld because its BYOK status or the provider's charge is unknown | Send `xOpenRouterMetadata: 'enabled'` or allow the lookup |
 | `MODEL_UNREPORTED` | warn | A result names no model and `mapResource` supplies none; the record is skipped | Return a name from `mapResource` |
 | `USAGE_UNREPORTED` | warn | A result has no `usage` object; the record is skipped | None: OpenRouter reported no usage |
@@ -350,7 +364,7 @@ or a log line, and fails if the adapter reads any property outside this list.
 | From | Fields read |
 | --- | --- |
 | A Chat or Responses request | `modalities` of `chatRequest` or `responsesRequest` |
-| A result or frame | `id`, `model`, `status` (Responses), `type` (stream events), `error` (Chat chunks, to tell an error from the end), `usage` (token counters, `cost`, `costDetails.upstreamInferenceCost`, `isByok`) and `openrouterMetadata` (`isByok`, and `provider` and `selected` of each available endpoint) |
+| A result or frame | `id`, `model`, `status` (Responses), `type` (stream events), `error` (Chat chunks, only whether it is present, to tell an error from the end and to set `run.error_code`), `usage` (token counters, `cost`, `costDetails.upstreamInferenceCost`, `isByok`) and `openrouterMetadata` (`isByok`, and `provider` and `selected` of each available endpoint) |
 | A `getGeneration` response | `data.providerName`, `data.responseCacheSourceId`, `data.isByok`, `data.upstreamInferenceCost` |
 
 Never read: messages, prompts, instructions, completions, reasoning, tool definitions and
@@ -376,7 +390,8 @@ error messages, and every other field of a result.
 - Each call hands its record to `client.record()` before its result reaches the caller, so
   the adapter holds no records. Shut down by stopping new OpenRouter calls, awaiting the
   ones in flight, then awaiting `client.shutdown()`.
-- A lookup can delay a call or a stream's terminal frame by at most `maxWaitMs`.
+- With the lookup enabled, it can delay a call or a stream's terminal frame by at most
+  `maxWaitMs`; by default it never does.
 - Between calls the adapter keeps only its options. A stream it returned carries its own
   metering state, which is released with the stream.
 - `client` is checked for a `record()` method, and other options use their TypeScript types
@@ -395,6 +410,7 @@ expected to work but are not tested.
 This adapter relies on the OpenRouter behaviour described in OpenRouter's
 [Usage accounting](https://openrouter.ai/docs/guides/administration/usage-accounting),
 [Prompt caching](https://openrouter.ai/docs/guides/best-practices/prompt-caching),
-[BYOK](https://openrouter.ai/docs/guides/overview/auth/byok) and
+[BYOK](https://openrouter.ai/docs/guides/overview/auth/byok),
+[FAQ](https://openrouter.ai/docs/faq) (credits are denominated in US dollars) and
 [Get a generation](https://openrouter.ai/docs/api-reference/get-a-generation) pages, and on
 the types of `@openrouter/sdk`.

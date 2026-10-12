@@ -31,6 +31,7 @@ import {
   type LookupOptions,
 } from './lookup.js';
 import {
+  CHAT_FAILED_CODE,
   chatObservation,
   declaredKinds,
   embeddingsObservation,
@@ -292,17 +293,24 @@ class Meter {
     }
   }
 
-  /** A chat stream is recorded from the chunk that carries `usage`. */
+  /**
+   * A chat stream is recorded from the chunk that carries `usage`. OpenRouter reports a failure
+   * after the HTTP 200 as a chunk with `error`; the record then carries `CHAT_FAILED_CODE`,
+   * whether the error arrived before the usage chunk or on it.
+   */
   #inspectChat(call: Call): Inspector {
     let router: Router | undefined;
+    let failed = false;
     return (frame) =>
       this.#inspecting(call, async () => {
         if (!isRecord(frame)) return 'continue';
         router = readRouter(frame.openrouterMetadata) ?? router;
+        failed ||= frame.error != null;
         if (!isRecord(frame.usage)) return frame.error == null ? 'continue' : 'error';
         const timing = elapsed(call);
+        const errorCode = failed ? CHAT_FAILED_CODE : undefined;
         await this.#guard(call, () =>
-          this.#record(call, timing, chatObservation(frame, call.declared, router)),
+          this.#record(call, timing, chatObservation(frame, call.declared, router, errorCode)),
         );
         return 'recorded';
       });

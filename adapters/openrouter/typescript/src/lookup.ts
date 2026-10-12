@@ -8,8 +8,10 @@ import { type Facts, isRecord, readFacts } from './mapping.js';
 export interface LookupOptions {
   /**
    * The most time one lookup may take, retries and waits included. A lookup can delay the
-   * native call's promise, or a stream's terminal frame, by this long. `0` disables the
-   * lookup. Default `5000`.
+   * native call's promise, or a stream's terminal frame, by this long, so it is opt-in:
+   * the default `0` disables it. Request `xOpenRouterMetadata: 'enabled'` to name the vendor
+   * at no cost to latency, or set a budget here, which should be small against the latency
+   * the application tolerates when the statistics endpoint is slow or down.
    */
   readonly maxWaitMs?: number | undefined;
   /** The wait before the first retry; it doubles after each. Default `250`. */
@@ -29,7 +31,8 @@ export type LookupOutcome =
   | { readonly ok: true; readonly facts: Facts }
   | { readonly ok: false; readonly reason: LookupFailureReason };
 
-const DEFAULT_MAX_WAIT_MS = 5_000;
+/** The lookup is opt-in: it adds up to its whole budget to a call whenever the endpoint is slow or down. */
+const DEFAULT_MAX_WAIT_MS = 0;
 const DEFAULT_INITIAL_DELAY_MS = 250;
 const DEFAULT_MAX_DELAY_MS = 1_000;
 

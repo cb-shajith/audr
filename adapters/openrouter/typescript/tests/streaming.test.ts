@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { RESPONSE_FAILED_CODE, RESPONSE_INCOMPLETE_CODE, withAudr } from '../src/index.js';
+import {
+  CHAT_FAILED_CODE,
+  RESPONSE_FAILED_CODE,
+  RESPONSE_INCOMPLETE_CODE,
+  withAudr,
+} from '../src/index.js';
 import {
   chatChunks,
   chatResult,
@@ -232,12 +237,44 @@ describe('a chat stream that ends without a record', () => {
     expect(h.logger.lines.join('\n')).not.toContain('private text');
   });
 
-  it('records a stream whose error chunk is followed by usage, and says nothing', async () => {
+  it('records a stream whose error chunk is followed by usage, with an error code', async () => {
     const frames = [{ error: { code: 429 } }, ...chatChunks()];
     const { h, stream } = await chatStream(frames);
     await drain(stream);
-    expect(await h.records()).toHaveLength(1);
+    const [record] = await h.records();
+    expect(record?.usage.llm).toEqual(LLM);
+    expect(record?.run.error_code).toBe(CHAT_FAILED_CODE);
     expect(h.logger.lines).toEqual([]);
+  });
+
+  it('records the usage chunk that carries the error itself, with an error code', async () => {
+    const chunks = chatChunks();
+    const last = chunks[chunks.length - 1] as object;
+    const { h, stream } = await chatStream([
+      ...chunks.slice(0, -1),
+      { ...last, error: { code: 500 } },
+    ]);
+    await drain(stream);
+    const [record] = await h.records();
+    expect(record?.usage.llm).toEqual(LLM);
+    expect(record?.run.error_code).toBe(CHAT_FAILED_CODE);
+  });
+
+  it('writes no error code for a Chat stream that carried no error, or a null one', async () => {
+    const { h, stream } = await chatStream([{ error: null }, ...chatChunks()]);
+    await drain(stream);
+    const [record] = await h.records();
+    expect(record?.run).not.toHaveProperty('error_code');
+  });
+
+  it('never writes an error message into a record or a log line', async () => {
+    const { h, stream } = await chatStream([
+      { error: { code: 500, message: 'private text' } },
+      ...chatChunks(),
+    ]);
+    await drain(stream);
+    expect(JSON.stringify(await h.records())).not.toContain('private text');
+    expect(h.logger.lines.join('\n')).not.toContain('private text');
   });
 
   it('does not report a stream twice when it is cancelled after it was abandoned', async () => {

@@ -1,6 +1,7 @@
 /**
  * Meter an embeddings call. An embeddings result never names the vendor, so the adapter
- * always asks `generations.getGeneration()`; `lookup` bounds how long it may wait.
+ * can name it only through `generations.getGeneration()`, which is off unless `lookup`
+ * gives it a budget.
  * `fetch` is answered locally: no network, no credentials.
  *
  *   node examples/embeddings.ts
@@ -19,7 +20,7 @@ const client = new Client(sink);
 const openrouter = instrumentOpenRouter(new OpenRouter({ apiKey: 'sk-or-example' }), {
   client,
   attributionDefaults: { environment: 'production', account_id: 'acct_42' },
-  // At most 2 s for the whole lookup, retries included; `maxWaitMs: 0` turns it off.
+  // Opt in: at most 2 s for the whole lookup, retries included. The default, 0, never looks up.
   lookup: { maxWaitMs: 2000 },
 });
 

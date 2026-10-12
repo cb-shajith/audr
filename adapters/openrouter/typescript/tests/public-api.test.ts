@@ -25,12 +25,14 @@ function emitted(file: string): string {
 
 it('pins the root exports', () => {
   expect(Object.keys(root).sort()).toEqual([
+    'CHAT_FAILED_CODE',
     'RESPONSE_FAILED_CODE',
     'RESPONSE_INCOMPLETE_CODE',
     'VERSION',
     'instrumentOpenRouter',
     'withAudr',
   ]);
+  expect(root.CHAT_FAILED_CODE).toBe('OPENROUTER_CHAT_FAILED');
   expect(root.RESPONSE_FAILED_CODE).toBe('OPENROUTER_RESPONSE_FAILED');
   expect(root.RESPONSE_INCOMPLETE_CODE).toBe('OPENROUTER_RESPONSE_INCOMPLETE');
 });

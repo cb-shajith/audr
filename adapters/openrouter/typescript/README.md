@@ -73,14 +73,17 @@ vendors, and only the service knows which one it chose:
   `xOpenRouterMetadata: 'enabled'`, as the example above does, gets `openrouterMetadata` on
   its result, naming the selected endpoint. The adapter reads the vendor from it and makes
   no further request.
-- **A lookup.** Otherwise the adapter asks `generations.getGeneration({ id })` through the
-  same client, which can hold back the call's promise, or a stream's terminal frame, for up
-  to `lookup.maxWaitMs`. Embeddings results never carry router metadata, so they always take
-  this path. [Lookup](https://github.com/openaudr/audr/blob/main/adapters/openrouter/typescript/docs/reference.md#lookup)
+- **A lookup, if you opt in.** Otherwise the adapter can ask
+  `generations.getGeneration({ id })` through the same client, which holds back the call's
+  promise, or a stream's terminal frame, for up to `lookup.maxWaitMs`. It is off by default
+  (`maxWaitMs: 0`) so that an outage of that endpoint never slows your inference calls.
+  Embeddings results never carry router metadata, so only the lookup can name their vendor.
+  [Lookup](https://github.com/openaudr/audr/blob/main/adapters/openrouter/typescript/docs/reference.md#lookup)
   has the retry rules and how to bound or disable it.
 
 A response that OpenRouter replayed from its cache is attributed to `openrouter`, and so is
-a call whose vendor cannot be resolved, which also logs `PROVIDER_UNRESOLVED`.
+a call whose vendor cannot be resolved, which also logs `PROVIDER_UNRESOLVED`. A response-cache
+replay is detected only by the lookup.
 
 ## Attribution
 

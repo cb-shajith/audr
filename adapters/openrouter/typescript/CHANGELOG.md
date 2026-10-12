@@ -16,9 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the usage chunk or terminal event when streamed) and per `embeddings.generate()`
   (`embedding`) to a host-owned `@openaudr/audr` `Client`, passing every argument to the
   native method unchanged. Token counters are made cache- and reasoning-exclusive, and the
-  cost of a BYOK call is OpenRouter's fee plus the provider's charge.
-- The serving vendor is read from router metadata, or from `generations.getGeneration()`
-  through the host's own client, which is retried within the `lookup` bounds. A
+  cost of a BYOK call is OpenRouter's fee plus the provider's charge. `usage.cost` is
+  OpenRouter credits, which are denominated in US dollars, and is written as `USD` unchanged.
+  A Chat stream that carried an `error` chunk and still ended with usage is recorded with
+  `run.error_code` `OPENROUTER_CHAT_FAILED`, as a failed Responses call is.
+- The serving vendor is read from router metadata, or, when the host opts in with
+  `lookup.maxWaitMs` (default `0`, so the statistics endpoint can never slow a call), from
+  `generations.getGeneration()` through the host's own client, which is retried within the
+  `lookup` bounds. A
   response-cache replay, and a call whose vendor cannot be resolved, are attributed to
   `openrouter`; `mapResource({ model, vendor })` can override either.
 - `withAudr()`, which applies attribution and an optional host run to every call any

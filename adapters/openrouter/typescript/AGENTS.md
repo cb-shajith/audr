@@ -53,8 +53,11 @@ without credentials or network access; stub `fetch` for SDK calls.
    (`MODEL_UNREPORTED`).
 7. The vendor comes from router metadata first, then from `generations.getGeneration()`
    through the host's own client (`src/lookup.ts`), and only for an id that matches
-   `getGeneration`'s `gen-` pattern. The lookup retries a `404`, `408`, `429`, `5xx` and a
-   failure with no status, within `lookup.maxWaitMs`, and stops at once on anything else.
+   `getGeneration`'s `gen-` pattern. The lookup is opt-in: `lookup.maxWaitMs` defaults to `0`,
+   because the statistics endpoint is a separate service and an outage would add the whole
+   budget to every call; `xOpenRouterMetadata: 'enabled'` is the zero-cost path. Never raise
+   the default. An enabled lookup retries a `404`, `408`, `429`, `5xx` and a failure with no
+   status, within `lookup.maxWaitMs`, and stops at once on anything else.
    Every attempt passes `retries: { strategy: 'none' }`: the SDK's default policy retries
    the budget's own timeout for up to an hour. It reads `providerName`,
    `responseCacheSourceId`, `isByok` and `upstreamInferenceCost` only. Slugs are made
@@ -63,16 +66,17 @@ without credentials or network access; stub `fetch` for SDK calls.
    never inferred from the model author, and never a reason to drop the record.
 8. Record a stream only from its terminal frame (Chat: the chunk with `usage`; Responses:
    `response.completed`, `.failed` or `.incomplete`), before yielding it, and report any
-   other ending once as `STREAM_INCOMPLETE` with its `reason`. Only async iteration is
-   metered.
+   other ending once as `STREAM_INCOMPLETE` with its `reason`. A Chat chunk with an `error`
+   (a failure after the HTTP 200) sets `run.error_code` to `CHAT_FAILED_CODE` on the usage
+   record; only its presence is read, never its content. Only async iteration is metered.
 9. Diagnostics go through `Diagnostics` with a `DiagnosticCode` and the fixed field set in
    `src/diagnostics.ts`. Add a code for every new diagnostic. Never log a record value, an
    id, a model name, a vendor name, a mutable error name or an error message; fixed error
    categories only.
 10. `emitter` is always the adapter as a `router`. `input_tokens` excludes cache reads and
     writes, which OpenRouter's prompt count includes, and `output_tokens` excludes
-    reasoning; `total_tokens` is never copied. `cost` is `total_cost` in `USD`: `usage.cost`
-    for a call that is not BYOK; for BYOK `usage.cost` plus the provider's charge, and no
+    reasoning; `total_tokens` is never copied. `cost` is `total_cost` in `USD` (OpenRouter
+    credits are US dollars, so nothing is converted): `usage.cost` for a call that is not BYOK; for BYOK `usage.cost` plus the provider's charge, and no
     cost (with `BYOK_COST_INCOMPLETE`) when either part or the BYOK status is unknown.
     `serverToolCost` is never added. Never write `run.step`, `run.trace_id` or
     `run.outcome`.

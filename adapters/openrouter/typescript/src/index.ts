@@ -3,7 +3,7 @@
 export { type AudrContext, type RunContext, withAudr } from './attribution.js';
 export type { DiagnosticCode } from './diagnostics.js';
 export type { LookupOptions } from './lookup.js';
-export { RESPONSE_FAILED_CODE, RESPONSE_INCOMPLETE_CODE } from './mapping.js';
+export { CHAT_FAILED_CODE, RESPONSE_FAILED_CODE, RESPONSE_INCOMPLETE_CODE } from './mapping.js';
 export {
   instrumentOpenRouter,
   type InstrumentOpenRouterOptions,

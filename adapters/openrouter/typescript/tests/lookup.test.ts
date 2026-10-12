@@ -193,15 +193,38 @@ describe('the retry budget', () => {
     expect(attempts).toHaveLength(0);
   });
 
+  it('is disabled by default, and then makes no request', async () => {
+    const { client, attempts } = scripted([reply]);
+    for (const options of [undefined, {}, { initialDelayMs: 1 }]) {
+      expect(await new GenerationLookup(client, options).find('gen-1')).toEqual({
+        ok: false,
+        reason: 'disabled',
+      });
+    }
+    expect(attempts).toHaveLength(0);
+  });
+
   it.each([
     ['NaN', Number.NaN],
     ['negative', -1],
     ['infinite', Number.POSITIVE_INFINITY],
     ['not a number', '10' as unknown as number],
-  ])('falls back to the defaults for a %s setting', async (_name, value) => {
+  ])('keeps the lookup disabled for a %s budget', async (_name, value) => {
+    const { client, attempts } = scripted([reply]);
+    const outcome = await new GenerationLookup(client, { maxWaitMs: value }).find('gen-1');
+    expect(outcome).toEqual({ ok: false, reason: 'disabled' });
+    expect(attempts).toHaveLength(0);
+  });
+
+  it.each([
+    ['NaN', Number.NaN],
+    ['negative', -1],
+    ['infinite', Number.POSITIVE_INFINITY],
+    ['not a number', '10' as unknown as number],
+  ])('falls back to the default waits for a %s setting', async (_name, value) => {
     const { client, attempts } = scripted([reply]);
     const outcome = await new GenerationLookup(client, {
-      maxWaitMs: value,
+      maxWaitMs: 1000,
       initialDelayMs: value,
       maxDelayMs: value,
     }).find('gen-1');
@@ -209,10 +232,10 @@ describe('the retry budget', () => {
     expect(attempts).toHaveLength(1);
   });
 
-  it('waits 250 ms, doubling to a 1000 ms cap, by default', async () => {
+  it('waits 250 ms, doubling to a 1000 ms cap, unless set', async () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'performance'] });
     const { client, attempts } = scripted([failing(status(404))]);
-    const lookup = new GenerationLookup(client, undefined).find('gen-1');
+    const lookup = new GenerationLookup(client, { maxWaitMs: 5_000 }).find('gen-1');
     await vi.advanceTimersByTimeAsync(6000);
     expect(await lookup).toEqual({ ok: false, reason: 'exhausted' });
     const times = attempts.map((attempt) => attempt.at - (attempts[0]?.at ?? 0));

@@ -3,6 +3,9 @@ import type { Cost, LlmUsage, Modality } from '@openaudr/audr';
 /** `resource.provider` for a response-cache replay, and for a call whose vendor is unknown. */
 export const OPENROUTER_PROVIDER = 'openrouter';
 
+/** Written to `run.error_code` for a Chat stream that carried an error chunk and still ended with usage. */
+export const CHAT_FAILED_CODE = 'OPENROUTER_CHAT_FAILED';
+
 /** Written to `run.error_code` for a Responses `status: 'failed'` or a `response.failed` event. */
 export const RESPONSE_FAILED_CODE = 'OPENROUTER_RESPONSE_FAILED';
 
@@ -130,13 +133,14 @@ function modalityOf(kinds: Iterable<Kind>, other: boolean): Modality {
 
 /**
  * `Observation` for a Chat result, or a streamed chunk that carries `usage`. `fallback` is
- * the router metadata an earlier chunk of the same stream carried. `undefined` when the
- * result has no usage object.
+ * the router metadata an earlier chunk of the same stream carried, and `errorCode` the
+ * failure an earlier chunk reported. `undefined` when the result has no usage object.
  */
 export function chatObservation(
   result: unknown,
   declared: ReadonlySet<Kind>,
   fallback?: Router,
+  errorCode?: string,
 ): Observation | undefined {
   const body = fields(result);
   const usage = fields(body?.usage);
@@ -164,7 +168,7 @@ export function chatObservation(
       requests: 1,
     },
     modality: modalityOf(kinds, positive(prompt?.videoTokens)),
-    errorCode: undefined,
+    errorCode,
   };
 }
 
